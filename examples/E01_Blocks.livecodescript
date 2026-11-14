@@ -51,7 +51,7 @@ on E01.Build
    repeat while r <= tRows
       put 1 into c
       repeat while c <= tCols
-         put sMap["heights"][r][c] into tH
+         put CellMap.Get(sMap, "heights", c, r) into tH
          if tH > 0 then
             put tH * tWall / 9 into tTall
             -- one shape per height, made the first time it is needed

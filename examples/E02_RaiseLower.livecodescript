@@ -70,7 +70,7 @@ on E02.BuildCell pC, pR
       Entity.Kill sBlock[pR][pC]
       put empty into sBlock[pR][pC]
    end if
-   put sMap["heights"][pR][pC] into tH
+   put CellMap.Get(sMap, "heights", pC, pR) into tH
    if tH <= 0 then exit E02.BuildCell
    put sMap["meta"]["cell"] into tCell
    put tH * sMap["meta"]["wallH"] / 9 into tTall
@@ -89,7 +89,7 @@ end E02.Z
 
 -- the cursor floats just above whatever height the cell has
 on E02.PlaceCursor
-   SetObjectPosition sCursor, E02.X(sCol), -(sMap["heights"][sRow][sCol] * sMap["meta"]["wallH"] / 9) - 4, E02.Z(sRow)
+   SetObjectPosition sCursor, E02.X(sCol), -(CellMap.Get(sMap, "heights", sCol, sRow) * sMap["meta"]["wallH"] / 9) - 4, E02.Z(sRow)
 end E02.PlaceCursor
 
 on Game.OnUpdate
@@ -101,7 +101,7 @@ on Game.OnUpdate
    if E02.Pressed(tKeys, "65363", "right") then put min(sMap["meta"]["cols"], sCol + 1) into sCol
    if E02.Pressed(tKeys, "65362", "up") then put max(1, sRow - 1) into sRow
    if E02.Pressed(tKeys, "65364", "down") then put min(sMap["meta"]["rows"], sRow + 1) into sRow
-   put sMap["heights"][sRow][sCol] into tH
+   put CellMap.Get(sMap, "heights", sCol, sRow) into tH
    if E02.Pressed(tKeys, "113,81", "raise") then E02.SetHeight min(kMaxH, tH + 1)
    if E02.Pressed(tKeys, "97,65", "lower") then E02.SetHeight max(0, tH - 1)
    if E02.Pressed(tKeys, "65293,65421", "save") then E02.Save
@@ -139,7 +139,7 @@ end E02.Pressed
 
 on E02.ShowHUD
    HUD.Set "E02.Cell", "CELL" && sCol & "," & sRow & "   TAG" && sMap["tags"][sRow][sCol] && \
-         "(" & CellMap.TagInfo(sMap, sTags, sMap["tags"][sRow][sCol], "name") & ")   HEIGHT" && sMap["heights"][sRow][sCol] && "  " & sSaved, 20, 120, 14
+         "(" & CellMap.TagInfo(sMap, sTags, sMap["tags"][sRow][sCol], "name") & ")   HEIGHT" && CellMap.Get(sMap, "heights", sCol, sRow) && "  " & sSaved, 20, 120, 14
 end E02.ShowHUD
 
 on Game.OnStop
@@ -159,7 +159,7 @@ on E02.TestKeys pKeys
 end E02.TestKeys
 
 function E02.State
-   return sCol & "," & sRow & "|h " & sMap["heights"][sRow][sCol] & "|tag " & sMap["tags"][sRow][sCol] & "|" & sSaved & "|" & sError
+   return sCol & "," & sRow & "|h " & CellMap.Get(sMap, "heights", sCol, sRow) & "|tag " & sMap["tags"][sRow][sCol] & "|" & sSaved & "|" & sError
 end E02.State
 
 function E02.FindFile pRelPath

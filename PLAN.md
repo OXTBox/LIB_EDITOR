@@ -88,7 +88,7 @@ an editor GUI (BitEditor, or a separate tool where the data is different, like A
 | E10 | A spawner with initial / min / max / % | spawn rules | Forge item parameters |
 | E11 | Camera squares | cameras from data | TRLE cameras |
 | E12 | The checker: list problems, jump to each | validation | Forge errors, TRLE finders |
-| E13 | Walk the map with Amazing Couple's hero | preview | Forge visual mode, TRLE preview |
+| E13 | Walk the map with Amazing Couple's hero (DONE 2026-11-14: a version 2 cellmap as a level, `CellMap.LevelSegments` + `CellMap.Walk`; `tests/e13_test.sh`) | preview | Forge visual mode, TRLE preview |
 | E14 | Stacked maps: a room above a room | base heights | TRLE stacked rooms |
 | E15 | Undo | an undo stack | both |
 
@@ -96,6 +96,12 @@ an editor GUI (BitEditor, or a separate tool where the data is different, like A
 - The map tool (BitEditor, grown with E02-E15 as tools) - Forge/TRLE-like.
 - A data tool for glyphs, clips and sounds - Anvil-like, separate (owner: maybe not one app).
 - Each tool's manual written the way these were: vocabulary, units, tutorials that build one map.
+
+## 5b. Version 2 of the map data (2026-11-14)
+`LIB_BIT/editor/CELLMAP_V2.md` settles questions 2 and 3 below: ceilings are a layer (with floor,
+red, green, blue: five heights a cell), links and objects are sections, stacked maps have a base.
+E04 (ceilings), E07/E08 (links), E14 (stacks) now build on that format; E01/E02 read heights
+through `CellMap.Get(map, "heights", col, row)` so they take either version.
 
 ## 6. Open questions (with defaults)
 1. Examples as Vibecode3D game cards (Play.Edit_E01 ...) installed like the games? Default: yes,
