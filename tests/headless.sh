@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # headless.sh - run an example card with no window: tests/headless.sh <Example> <Prefix> "<keys>:<steps> ..."
 # e.g. tests/headless.sh E01_Blocks E01 "0:5"
-# Uses LIB_GAMES' engine stand-ins (tools/engine_stubs.livecodescript on its spark-arcade branch)
+# Uses LIB_GAMES' engine stand-ins (tools/engine_stubs.livecodescript)
 # and LIB_MCP's standalone. Prints <Prefix>.State() after each key group, then the HUD.
 HERE="$(cd "$(dirname "$0")" && pwd)"
 EX="$1"; PRE="$2"; PLAN="$3"
 STUBS="$HERE/_engine_stubs.livecodescript"
-git -C "$HERE/../../LIB_GAMES" show spark-arcade:tools/engine_stubs.livecodescript > "$STUBS" || exit 1
+cp "$HERE/../../LIB_GAMES/tools/engine_stubs.livecodescript" "$STUBS" || exit 1
 W="//wsl\$/Ubuntu$HERE"
 {
 cat <<LC

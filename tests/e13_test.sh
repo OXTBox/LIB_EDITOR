@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # e13_test.sh - E13 Walk The Map with no window: places the hero around the sample map and walks.
 #   tests/e13_test.sh        prints one line a scene: cell | height (hu) | effect | ...  then PASS / FAIL
-# Uses the same engine stand-ins as headless.sh (LIB_GAMES spark-arcade) and LIB_MCP's standalone.
+# Uses the same engine stand-ins as headless.sh (LIB_GAMES/tools) and LIB_MCP's standalone.
 # It checks the rules (where the hero ends, at what height, which effect); it draws nothing.
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then sed -n 2,5p "$0"; exit 0; fi
 HERE="$(cd "$(dirname "$0")" && pwd)"
 STUBS="$HERE/_engine_stubs.livecodescript"
-git -C "$HERE/../../LIB_GAMES" show spark-arcade:tools/engine_stubs.livecodescript > "$STUBS" || exit 1
+cp "$HERE/../../LIB_GAMES/tools/engine_stubs.livecodescript" "$STUBS" || exit 1
 W="//wsl\$/Ubuntu$HERE"
 scene() {   # name col row yawDegrees keys steps expected-prefix
 cat <<LC
