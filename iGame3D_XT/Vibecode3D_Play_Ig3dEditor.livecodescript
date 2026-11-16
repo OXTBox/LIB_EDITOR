@@ -48,6 +48,7 @@ constant kInk = "#7CFF7C"
 on Game.OnStart
    local tKeep
    focus on nothing          -- arrow keys belong to the game, never to a menu or a field
+   Ig.Wake
    Engine.ResetCamera
    Scene.ClearAll
    Particles.Clear
@@ -156,6 +157,7 @@ on Ig.BuildMenus
 end Ig.BuildMenus
 
 on Ig.Menu pMenu, pItem
+   Ig.Wake
    local tKey
    if char -2 of pItem is "/" then delete char -2 to -1 of pItem      -- "Focus Mesh/0": the shortcut letter
    set the itemDel to "|"
@@ -320,6 +322,7 @@ on Ig.Library pWhat
    if pWhat is "Text" then
       -- the Aquarius characters: made here from one bitmap, no 2008 data needed
       put Ig.AquaList() into sLibList
+      put false into sLib["browse"]
       Ig.ShowLibrary
       put "Aqua" into sLib["folder"]
       Ig.Say "LIBRARY > TEXT: THE 256 AQUARIUS CHARACTERS (" & toUpper(sAqua["from"]) & ").  CLICK ONE, OR THE FIRST LINE FOR ALL 256"
@@ -360,10 +363,12 @@ on Ig.Library pWhat
          Ig.Say "LIBRARY >" && toUpper(pWhat) & ": NOT IN THE 2008 DATA (IMAGES AND SOUNDS ARE LEFT OUT)"
          exit Ig.Library
    end switch
-   put Ig.ListFiles(tRoot & "/" & tFolder, empty, tSuffix) into sLibList
-   Ig.ShowLibrary
-   Ig.Say "LIBRARY >" && toUpper(pWhat) & ":" && the number of lines of sLibList && "FILES.  CLICK ONE" & (" (A MODEL LOADS AS A WIREFRAME)")
+   put Ig.ListFiles(tRoot & "/" & tFolder, empty, tSuffix) into sLib["all"]
+   put empty into sLib["path"]
+   put true into sLib["browse"]
    put tFolder into sLib["folder"]
+   Ig.ShowLibrary
+   Ig.Say "LIBRARY >" && toUpper(pWhat) & ":" && the number of lines of sLib["all"] && "FILES IN FOLDERS.  DOUBLE-CLICK A FOLDER (OR RETURN); CLICK A FILE (A MODEL LOADS AS A WIREFRAME)"
 end Ig.Library
 
 -- the Library list on the right, filled with sLibList
@@ -379,13 +384,105 @@ on Ig.ShowLibrary
       set the textSize of field "Ig3dLibrary" of group id tGroup to 11
       set the backgroundColor of field "Ig3dLibrary" of group id tGroup to "#061006"
       set the textColor of field "Ig3dLibrary" of group id tGroup to kInk
-      set the script of field "Ig3dLibrary" of group id tGroup to "on mouseUp" & cr & "   Ig.LibraryPick the hilitedLine of me" & cr & "end mouseUp" & cr & \
-            "on mouseDown" & cr & "   Ig.LibraryDrag word 2 of the clickLine" & cr & "end mouseDown"
    end if
-   set the rect of field "Ig3dLibrary" of group id tGroup to 548, 168, 762, 640
+   -- a click loads a file; a double-click or Return opens a folder (.. goes back up)
+   set the traversalOn of field "Ig3dLibrary" of group id tGroup to true
+   set the script of field "Ig3dLibrary" of group id tGroup to "on mouseUp" & cr & "   Ig.LibraryPick the hilitedLine of me" & cr & "end mouseUp" & cr & \
+         "on mouseDoubleUp" & cr & "   Ig.LibraryOpen the hilitedLine of me" & cr & "end mouseDoubleUp" & cr & \
+         "on rawKeyDown pKey" & cr & "   if pKey is 65293 or pKey is 65421 then" & cr & "      Ig.LibraryOpen the hilitedLine of me" & cr & "   else" & cr & "      pass rawKeyDown" & cr & "   end if" & cr & "end rawKeyDown" & cr & \
+         "on mouseDown" & cr & "   Ig.LibraryDrag word 2 of the clickLine" & cr & "end mouseDown"
+   -- the right side of the window, whatever its size (the launcher's is 900 x 600)
+   set the rect of field "Ig3dLibrary" of group id tGroup to the width of this card - 232, 168, the width of this card - 12, the height of this card - 34
    set the visible of field "Ig3dLibrary" of group id tGroup to true
-   put sLibList into field "Ig3dLibrary" of group id tGroup
+   Ig.Wake
+   if sLib["browse"] is true then
+      Ig.Browse
+   else
+      put sLibList into field "Ig3dLibrary" of group id tGroup
+   end if
 end Ig.ShowLibrary
+
+-- the list as folders: sLib["all"] holds every entry (a/b/name), sLib["path"] the folder shown.
+-- At the top, the entries with no folder (A STREET OF EACH KIND ...) and then the folders;
+-- inside a folder, ".." first, then its folders, then its files.
+on Ig.Browse
+   local tOut, tTop, tDirs, tFiles, tLine, tRest, tN, tSeen
+   put sLib["path"] into tTop
+   put the number of chars of tTop into tN
+   set the itemDelimiter to "/"
+   repeat for each line tLine in sLib["all"]
+      if tLine is empty then next repeat
+      if tN > 0 then
+         if char 1 to tN of tLine is not tTop then next repeat
+         put char tN + 1 to -1 of tLine into tRest
+      else
+         put tLine into tRest
+      end if
+      if the number of items of tRest > 1 then
+         if tSeen[item 1 of tRest] is empty then
+            put true into tSeen[item 1 of tRest]
+            put item 1 of tRest & "/" & cr after tDirs
+         end if
+      else
+         put tRest & cr after tFiles
+      end if
+   end repeat
+   set the itemDelimiter to comma
+   if tN > 0 then
+      put ".." & cr & tDirs & tFiles into tOut
+   else
+      put tFiles & tDirs into tOut
+   end if
+   if the last char of tOut is cr then delete the last char of tOut
+   put tOut into sLibList
+   put sLibList into field "Ig3dLibrary" of group "Ig3dTools"
+   set the hilitedLine of field "Ig3dLibrary" of group "Ig3dTools" to empty
+   set the vScroll of field "Ig3dLibrary" of group "Ig3dTools" to 0
+end Ig.Browse
+
+-- a double-click or Return: a folder opens, ".." goes back up, a file loads as a click does
+on Ig.LibraryOpen pLine
+   local tLine
+   if pLine is not a number then exit Ig.LibraryOpen
+   put line pLine of sLibList into tLine
+   if sLib["browse"] is not true then
+      Ig.LibraryPick pLine
+      exit Ig.LibraryOpen
+   end if
+   set the itemDelimiter to "/"
+   if tLine is ".." then
+      delete the last char of sLib["path"]
+      delete item -1 of sLib["path"]
+      if sLib["path"] is not empty then
+         put "/" after sLib["path"]
+      end if
+   else if the last char of tLine is "/" then
+      put tLine after sLib["path"]
+   else
+      set the itemDelimiter to comma
+      Ig.LibraryPick pLine
+      exit Ig.LibraryOpen
+   end if
+   set the itemDelimiter to comma
+   Ig.Browse
+   if sLib["path"] is empty then
+      Ig.Say "LIBRARY: THE TOP.  DOUBLE-CLICK A FOLDER (OR RETURN) TO OPEN IT"
+   else
+      Ig.Say "LIBRARY > " & toUpper(char 1 to -2 of sLib["path"]) & ":" && the number of lines of sLibList - 1 && "ENTRIES.  CLICK ONE; .. (DOUBLE-CLICK OR RETURN) GOES BACK"
+   end if
+end Ig.LibraryOpen
+
+-- the entry on line pLine, with its folder: Vehicles/car, ships/small/boat.wtf
+function Ig.LibRel pLine
+   return sLib["path"] & line pLine of sLibList
+end Ig.LibRel
+
+-- something changed: draw again (the player stops drawing while nothing moves, bStill)
+on Ig.Wake
+   global bStill
+   put false into bStill
+   put 0 into sLib["still"]
+end Ig.Wake
 
 function Ig.ListFiles pFolder, pRel, pSuffix
    local tOut, tF, tSub, tSuf
@@ -459,7 +556,8 @@ end Ig.OpenTool
 on Ig.LibraryDrag pLine
    local tStart, tMoved, tPrev, tPath, tWhere, tX, tY, tXZ
    if pLine is not a number or sLib["folder"] is not "WTF" then exit Ig.LibraryDrag
-   put Ig.DataRoot() & "/WTF/" & line pLine of sLibList into tPath
+   if char -4 to -1 of line pLine of sLibList is not ".wtf" then exit Ig.LibraryDrag
+   put Ig.DataRoot() & "/WTF/" & Ig.LibRel(pLine) into tPath
    put the screenMouseLoc into tStart
    put false into tMoved
    put "V3D_DragPreview" into tPrev
@@ -536,9 +634,14 @@ end Ig.MakeDragPreview
 on Ig.LibraryPick pLine
    local tRel, tPath, tName
    if pLine is not a number then exit Ig.LibraryPick
+   Ig.Wake
+   if sLib["browse"] is true and (line pLine of sLibList is ".." or the last char of line pLine of sLibList is "/") then
+      Ig.Say "DOUBLE-CLICK (OR RETURN) TO OPEN" && toUpper(line pLine of sLibList)
+      exit Ig.LibraryPick
+   end if
    if sLib["folder"] is "Gen" then
-      put line pLine of sLibList into tRel
-      if pLine is 1 then
+      put Ig.LibRel(pLine) into tRel
+      if tRel begins with "A STREET" then
          Ig.Streets
       else if tRel begins with "A SHOWCASE" then
          Ig.Showcase
@@ -569,7 +672,7 @@ on Ig.LibraryPick pLine
       end if
       exit Ig.LibraryPick
    end if
-   put line pLine of sLibList into tRel
+   put Ig.LibRel(pLine) into tRel
    put Ig.DataRoot() & "/" & sLib["folder"] & "/" & tRel into tPath
    if char -4 to -1 of tRel is ".wtf" then
       Ig.SpawnModel pLine, 0, 0, true
@@ -582,7 +685,7 @@ end Ig.LibraryPick
 -- loaded model, a drop adds one more
 on Ig.SpawnModel pLine, pX, pZ, pReplace
    local tRel, tPath, tName
-   put line pLine of sLibList into tRel
+   put Ig.LibRel(pLine) into tRel
    put Ig.DataRoot() & "/" & sLib["folder"] & "/" & tRel into tPath
    put "Ig.WTF" & pLine into tName
    Mesh.Define tName, Ig.WTFMesh(tPath)
@@ -703,6 +806,7 @@ on Ig.LevelLibrary
    delete the last char of tOut
    sort lines of tOut
    put tOut into sLibList
+   put false into sLib["browse"]
    Ig.ShowLibrary
    put "Levels" into sLib["folder"]
    Ig.Say "LIBRARY > LEVELS:" && the number of lines of tOut && "LEVELS (XTALK FILES: Data/Levels/<NAME>/load_script.xtalk).  CLICK ONE"
@@ -854,7 +958,7 @@ on Ig.GenLibrary
       Ig.Say "LIBRARY > MODELS: NO BUILDING TOOL (Tools/v3d_buildings.livecodescript) AND NO 2008 DATA"
       exit Ig.GenLibrary
    end if
-   put "A STREET OF EACH KIND" & cr into tOut
+   put "A STREET OF EACH KIND" & cr & "A SHOWCASE OF EVERY MODEL" & cr into tOut
    repeat for each item tN in Bld.Names("Buildings")
       put "Buildings/" & tN & cr after tOut
    end repeat
@@ -863,7 +967,6 @@ on Ig.GenLibrary
    end repeat
    Ig.UseTool "v3d_props"
    Ig.UseTool "v3d_figures"
-   put "A SHOWCASE OF EVERY MODEL" & cr after tOut
    if "v3d_props" is among the lines of the stacksInUse then
       repeat for each item tG in Prop.Groups()
          repeat for each item tN in Prop.Names(tG)
@@ -877,10 +980,12 @@ on Ig.GenLibrary
       end repeat
    end if
    delete the last char of tOut
-   put tOut into sLibList
-   Ig.ShowLibrary
+   put tOut into sLib["all"]
+   put empty into sLib["path"]
+   put true into sLib["browse"]
    put "Gen" into sLib["folder"]
-   Ig.Say "LIBRARY > MODELS: MADE FROM THEIR NAMES (NO 2008 DATA).  CLICK ONE, OR THE FIRST LINE FOR A STREET OF EACH KIND"
+   Ig.ShowLibrary
+   Ig.Say "LIBRARY > MODELS: MADE FROM THEIR NAMES.  THE FIRST TWO LINES: A STREET, A SHOWCASE.  DOUBLE-CLICK A FOLDER (OR RETURN) FOR ITS MODELS"
 end Ig.GenLibrary
 
 -- a building on the floor at x, z (metres from the middle, the front facing -z; pTurn: facing +z).
@@ -1389,6 +1494,7 @@ end Ig.Hover
 
 on Ig.Tool pName
    local tTool, tKey, x, z
+   Ig.Wake
    put Ig.ToolInfo(pName) into tTool
    put (random(9) - 5) * 50 into x
    put (random(7) - 4) * 50 into z
@@ -1473,6 +1579,7 @@ on Ig.Recolor
 end Ig.Recolor
 
 on Ig.Say pText
+   Ig.Wake
    HUD.Set "Ig.Msg", pText, 10, 660, 11
    put sTicks + 150 into sMsgUntil
 end Ig.Say
@@ -1481,7 +1588,7 @@ end Ig.Say
 
 on Game.OnUpdate
    local tKeys
-   global gV3DSelected
+   global gV3DSelected, bStill
    put sSelected into gV3DSelected     -- the Inspector's Object page shows it
    add 1 to sTicks
    put the keysDown into tKeys
@@ -1497,6 +1604,17 @@ on Game.OnUpdate
    if sMsgUntil is a number and sTicks > sMsgUntil then
       HUD.Remove "Ig.Msg"
       put empty into sMsgUntil
+   end if
+   -- nothing moving (no keys, no orbit, no message to take down): after a few frames the
+   -- player stops stepping and drawing until a key, the mouse or Ig.Wake (an idle editor
+   -- costs next to no CPU)
+   if tKeys is empty and not sOrbit and sMsgUntil is empty then
+      add 1 to sLib["still"]
+      if sLib["still"] >= 3 then
+         put true into bStill
+      end if
+   else
+      put 0 into sLib["still"]
    end if
 end Game.OnUpdate
 
