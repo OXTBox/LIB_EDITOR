@@ -48,6 +48,25 @@ Rights: the owner's position is that the iGame3D library is GPL-compatible and u
 teaching and research; only what's needed ships. Generated stand-ins get plain names (a few
 2008 models carry third-party character names; they stay in the works branch only).
 
+## Where it stands (16 Nov, evening): every workstream done; shipping is yours
+
+| | Work | Done | Test |
+|---|---|---|---|
+| A | buildings from their names (Tools/v3d_buildings): your window heights by kind, uDead's breakable doors and windows; 123 props in 17 groups (Tools/v3d_props), generic names only | yes | t34 (24), t35 |
+| B | the 256 Aquarius models from one bitmap (Data/Text/Aquarius.pbm) | yes | t33 (19) |
+| C | our stick figure by role (Tools/v3d_figures, 14 roles; the 2008 characters map to roles, civilian_001 ...); Data/Models/stick_figure.gltf for other engines | yes | t35 |
+| D | levels as xTalk files (Data/Levels/<name>/load_script.xtalk; Lvl.* = the 2008 Lua hooks, Data/Scripts/LEVEL_API.txt); Library > Levels, File > Save; four levels shipped | yes | t35 |
+| E | DeadDays, the third-person shooter (LIB_GAMES branch deaddays), built with these tools | yes | t36 (20) |
+| F | the editor: its own Tools/ and Data/, Set Data Folder..., axes on the floor, Help > the 2008 pages (Help_2008), showcase of every model, the installer knows its home | yes | t33-t35 |
+
+The whole edition is 772 KB (Tools, Data, Help_2008, the script). Speeds on the real engine,
+headless: Aquarius 256 models 304 ms; a street of each kind 110 ms; the 131-model showcase
+164 ms; the DeadDays city 104 ms. Nothing has been seen on a screen yet.
+
+Left for you: play it; the Skins tool (Replace With Model) still lists .wtf models only, so it
+needs a Data folder (or a rework to list generated models); remove "Ig3dEditor" from HOLD in
+LIB_PUBLIC vibeinstall.py when you want it shipped; Python versions of the level commands.
+
 ## Workstreams
 
 | | Work | First result |
