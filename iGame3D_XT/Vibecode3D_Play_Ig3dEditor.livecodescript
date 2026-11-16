@@ -389,11 +389,27 @@ on Ig.ShowLibrary
    set the traversalOn of field "Ig3dLibrary" of group id tGroup to true
    set the script of field "Ig3dLibrary" of group id tGroup to "on mouseUp" & cr & "   Ig.LibraryPick the hilitedLine of me" & cr & "end mouseUp" & cr & \
          "on mouseDoubleUp" & cr & "   Ig.LibraryOpen the hilitedLine of me" & cr & "end mouseDoubleUp" & cr & \
-         "on rawKeyDown pKey" & cr & "   if pKey is 65293 or pKey is 65421 then" & cr & "      Ig.LibraryOpen the hilitedLine of me" & cr & "   else" & cr & "      pass rawKeyDown" & cr & "   end if" & cr & "end rawKeyDown" & cr & \
+         "on rawKeyDown pKey" & cr & "   if pKey is 65293 or pKey is 65421 then Ig.LibraryOpen the hilitedLine of me" & cr & "end rawKeyDown" & cr & \
          "on mouseDown" & cr & "   Ig.LibraryDrag word 2 of the clickLine" & cr & "end mouseDown"
    -- the right side of the window, whatever its size (the launcher's is 900 x 600)
    set the rect of field "Ig3dLibrary" of group id tGroup to the width of this card - 232, 168, the width of this card - 12, the height of this card - 34
    set the visible of field "Ig3dLibrary" of group id tGroup to true
+   -- a little X above the list's top right corner closes it
+   if there is not a button "Ig3dLibraryClose" of group id tGroup then
+      reset the templateButton
+      create button "Ig3dLibraryClose" in group id tGroup
+      set the label of button "Ig3dLibraryClose" of group id tGroup to "X"
+      set the textSize of button "Ig3dLibraryClose" of group id tGroup to 11
+      set the textStyle of button "Ig3dLibraryClose" of group id tGroup to "bold"
+      set the traversalOn of button "Ig3dLibraryClose" of group id tGroup to false
+      set the opaque of button "Ig3dLibraryClose" of group id tGroup to true
+      set the backgroundColor of button "Ig3dLibraryClose" of group id tGroup to "#061006"
+      set the textColor of button "Ig3dLibraryClose" of group id tGroup to kInk
+      set the tooltip of button "Ig3dLibraryClose" of group id tGroup to "Close the Library list"
+      set the script of button "Ig3dLibraryClose" of group id tGroup to "on mouseUp" & cr & "   Ig.CloseLibrary" & cr & "end mouseUp"
+   end if
+   set the rect of button "Ig3dLibraryClose" of group id tGroup to the right of field "Ig3dLibrary" of group id tGroup - 20, the top of field "Ig3dLibrary" of group id tGroup - 20, the right of field "Ig3dLibrary" of group id tGroup, the top of field "Ig3dLibrary" of group id tGroup - 2
+   set the visible of button "Ig3dLibraryClose" of group id tGroup to true
    Ig.Wake
    if sLib["browse"] is true then
       Ig.Browse
@@ -401,6 +417,14 @@ on Ig.ShowLibrary
       put sLibList into field "Ig3dLibrary" of group id tGroup
    end if
 end Ig.ShowLibrary
+
+-- the X above the list: the list goes (Library > ... brings it back)
+on Ig.CloseLibrary
+   if there is a field "Ig3dLibrary" of group "Ig3dTools" then set the visible of field "Ig3dLibrary" of group "Ig3dTools" to false
+   if there is a button "Ig3dLibraryClose" of group "Ig3dTools" then set the visible of button "Ig3dLibraryClose" of group "Ig3dTools" to false
+   focus on nothing
+   Ig.Say "LIBRARY CLOSED (THE LIBRARY MENU OPENS IT AGAIN)"
+end Ig.CloseLibrary
 
 -- the list as folders: sLib["all"] holds every entry (a/b/name), sLib["path"] the folder shown.
 -- At the top, the entries with no folder (A STREET OF EACH KIND ...) and then the folders;
