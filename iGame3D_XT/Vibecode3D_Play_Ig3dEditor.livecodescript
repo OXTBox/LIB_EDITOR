@@ -228,6 +228,10 @@ on Ig.Menu pMenu, pItem
          Ig.OpenTool "V3D_Inspector", "v3d_inspector.livecodescript", "Insp.Build"
          break
       case "Edit/Replace With Model..."
+         -- the models it offers first are made from their names
+         Ig.UseTool "v3d_buildings"
+         Ig.UseTool "v3d_props"
+         Ig.UseTool "v3d_figures"
          Ig.OpenTool "V3D_Skins", "v3d_skins.livecodescript", "Skins.Build"
          break
       case "Mesh/Focus Mesh"
@@ -403,12 +407,26 @@ end Ig.ListFiles
 -------------------------------------------------------------------- editor tools (A-84, A-86, A-87)
 
 -- the projects folder (the 2008 Data folder is projects/LIB_GAMES/igame3D_2008_Texts)
+-- the projects folder (the one holding LIB_GAMES, whose games Replace With Model skins): found
+-- above this script or this stack; empty when there is none (an installed copy)
 function Ig.Projects
-   local tRoot
-   put Ig.DataRoot() into tRoot
-   if tRoot is empty then return "//wsl$/Ubuntu/home/igame3d/projects"
-   set the itemDel to "/"
-   return item 1 to -3 of tRoot
+   local tDir, tErr, tPath
+   put empty into tDir
+   try
+      put the uScriptFile of (the long owner of me) into tDir
+   catch tErr
+      put empty into tDir
+   end try
+   set the itemDelimiter to "/"
+   repeat for each line tPath in (tDir & cr & the effective filename of this stack)
+      replace "\" with "/" in tPath
+      repeat 8 times
+         delete item -1 of tPath
+         if tPath is empty then exit repeat
+         if there is a folder (tPath & "/LIB_GAMES") then return tPath
+      end repeat
+   end repeat
+   return empty
 end Ig.Projects
 
 -- a tool window built by code on a brand-new stack each time (its script: Tools/<pFile> beside
