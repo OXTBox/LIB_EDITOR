@@ -1158,9 +1158,20 @@ on Ig.MakeDragPreview pStack, pPoints
    create graphic "Wire"
    set the style of graphic "Wire" to "line"
    set the foregroundColor of graphic "Wire" to kInk
+   set the lineSize of graphic "Wire" to 3
    set the points of graphic "Wire" to pPoints
    set the defaultStack to the short name of this stack
    unlock messages
+   -- the window is the model's own wire (Tools/window_shape: Scott Rossi's window masks):
+   -- only the lines float under the mouse; without the library, a dark square as before
+   if not ("WindowShape" is among the lines of the stacksInUse) and there is a file Ig.ToolFile("window_shape.livecodescript") then start using stack Ig.ToolFile("window_shape.livecodescript")
+   if "WindowShape" is among the lines of the stacksInUse and pPoints is not empty then
+      try
+         Shape.FromControl pStack, the long id of graphic "Wire" of stack pStack
+         set the blendLevel of stack pStack to 0
+      catch pPoints
+      end try
+   end if
    set the topLeft of stack pStack to (item 1 of the screenMouseLoc + 14) & comma & (item 2 of the screenMouseLoc + 14)
    show stack pStack
 end Ig.MakeDragPreview
