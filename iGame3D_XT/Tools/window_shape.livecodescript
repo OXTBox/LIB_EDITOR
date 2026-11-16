@@ -54,9 +54,14 @@ command Shape.FromFile pStack, pFile
 end Shape.FromFile
 
 -- any control's picture (a graphic, a group, a field...) becomes the outline: where nothing is
--- drawn, there is no window
+-- drawn, there is no window. A control of pStack is moved to its top left first, so what it
+-- draws and the outline are in the same place (else only where they overlap shows: dashes).
 command Shape.FromControl pStack, pControl
    local tData, tErr
+   try
+      if the long name of stack pStack is in the long name of pControl then set the topLeft of pControl to 0, 0
+   catch tErr
+   end try
    try
       export snapshot from pControl to tData as PNG
    catch tErr

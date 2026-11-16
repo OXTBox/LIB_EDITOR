@@ -1167,7 +1167,11 @@ on Ig.MakeDragPreview pStack, pPoints
    if not ("WindowShape" is among the lines of the stacksInUse) and there is a file Ig.ToolFile("window_shape.livecodescript") then start using stack Ig.ToolFile("window_shape.livecodescript")
    if "WindowShape" is among the lines of the stacksInUse and pPoints is not empty then
       try
+         -- the outline from a line twice as thick, then the wire drawn at its own width inside
+         -- it: no gaps where a thin outline's soft edges fall through (owner, 16 Nov)
+         set the lineSize of graphic "Wire" of stack pStack to 6
          Shape.FromControl pStack, the long id of graphic "Wire" of stack pStack
+         set the lineSize of graphic "Wire" of stack pStack to 3
          set the blendLevel of stack pStack to 0
       catch pPoints
       end try
