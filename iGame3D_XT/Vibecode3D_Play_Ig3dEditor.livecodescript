@@ -16,6 +16,10 @@
 ## AQUARIUS (iGame3D XT, workstream B, 16 Nov 2026): Library > Text lists the 256 Aquarius
 ##   characters; the first line lays all 256 on the floor, made from ONE bitmap
 ##   (Data/Text/Aquarius.pbm beside this script, else the copy built in below), timed.
+## BUILDINGS (workstream A, 16 Nov 2026): with no 2008 Data folder, Library > Models lists
+##   buildings made from their names (Tools/v3d_buildings); its first line builds a street of each
+##   kind (warehouse, shop, home, military). Their doors and windows break as uDead's do:
+##   Edit > boom breaks the selected building's, a second boom flattens it; boom all, all of them.
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
 ######################################################################################
 
@@ -25,6 +29,7 @@ global bPaused, bPlaying
 
 local sLib, sLibRoot, sLibList, sMade, sSelected, sColorN, sOrbit, sTicks, sCamX, sCamY, sCamZ, sMsgUntil, sLight
 local sAqua          -- the Aquarius bitmap and models: ["bits"], ["from"], ["keys"], the timings
+local sBld, sBldN, sBldOf   -- buildings: sBld[n] name/shell/parts; sBldOf[shell key] = n
 
 -- TOOLBAR_MAP: name | Unicode code point | 2007 icon | group | tooltip (iGame3D)
 constant kTools = "level|2699|console.png|editing mode|Level settings;snapshot|25D9|snapshot.png|camera tools|Snapshot of the 3D view;colors|25D0|colorball16x16.png|camera tools|Colours;light|2600|lights.png|light|Position lights;objects|263A|32x32zombie3.png|actors and effects|Access view settings (actors);particles|2733|particlesicon24x24.png|actors and effects|Particles;camera|25CE|meshView.png|camera tools|Camera / mesh view;GLController|2725|repositiontoolnew2.png|camera tools|Show/hide the GL controller;pathselect|21E2|pathSelectIcon.png|mesh tools|Path selection;path|270E|pathToolIcon.png|mesh tools|Path editing;select_mesh|25A6|tool6.png|vertex tools|Mesh editing;vertex|2022|tool2.png|vertex tools|Create vertex;line|2571|tool3.png|vertex tools|Connect vertices;disconnect|2702|tool5.png|vertex tools|Disconnect mesh line;split|22D4|tool4.png|vertex tools|Split mesh line;quad|25AD|22x22quadtool.png|primitives|Quad;cube|25A3|cube.png|primitives|Cube;dropMesh|2913|dropMeshicon.png|primitives|Drop mesh;Terrain|25B2|quad.png|primitives|Import image to terrain;Play_Game|25B6|playGameButton.png|editing mode|Play (Escape exits);sounds|266A|soundicon22x22.png|actors and effects|Sounds;cylinder|232D|cylinder.png|primitives|Cylinder;cone|25B3|cone.png|primitives|Cone;sphere|25CF|sphere.png|primitives|Sphere;WindowPickPop|2750|windows.png|windows|Open windows;bones|27DF|bone.png|mesh tools|Bones"
@@ -145,7 +150,7 @@ on Ig.Menu pMenu, pItem
       case "File/Reset"
       case "File/Clear"
          repeat for each line tKey in sMade
-            Entity.Kill tKey
+            Ig.Kill tKey
          end repeat
          put empty into sMade
          put empty into sSelected
@@ -153,13 +158,17 @@ on Ig.Menu pMenu, pItem
          break
       case "Edit/Undo"
          if sMade is not empty then
-            Entity.Kill line -1 of sMade
+            Ig.Kill line -1 of sMade
             delete line -1 of sMade
             put line -1 of sMade into sSelected
             Ig.Say "UNDONE"
          end if
          break
       case "Edit/boom"
+         -- a building: its doors and windows break first; boom again flattens it
+         if sSelected is not empty and sBldOf[sSelected] is not empty then
+            if Ig.BreakBuilding(sBldOf[sSelected]) > 0 then break
+         end if
          if sSelected is not empty then
             FX.Sparks GetObjectPosition(sSelected, "x"), GetObjectPosition(sSelected, "y"), GetObjectPosition(sSelected, "z"), 30, "#FFB000"
             Ig.Menu "Edit", "Undo"
@@ -167,9 +176,10 @@ on Ig.Menu pMenu, pItem
          end if
          break
       case "Edit/boom all"
+         if Ig.BreakAll() > 0 then break
          repeat for each line tKey in sMade
             FX.Sparks GetObjectPosition(tKey, "x"), GetObjectPosition(tKey, "y"), GetObjectPosition(tKey, "z"), 20, "#FFB000"
-            Entity.Kill tKey
+            Ig.Kill tKey
          end repeat
          put empty into sMade
          put empty into sSelected
@@ -240,8 +250,13 @@ on Ig.Library pWhat
       exit Ig.Library
    end if
    put Ig.DataRoot() into tRoot
+   if tRoot is empty and pWhat is "Models" then
+      -- no 2008 Data folder: the models are made from their names
+      Ig.GenLibrary
+      exit Ig.Library
+   end if
    if tRoot is empty then
-      Ig.Say "NO iGAME3D DATA FOLDER FOUND (LIB_GAMES/igame3D_2008_Texts)"
+      Ig.Say "LIBRARY >" && toUpper(pWhat) & ": NOT IN THIS EDITION YET (NO 2008 DATA FOLDER)"
       exit Ig.Library
    end if
    switch pWhat
@@ -427,6 +442,16 @@ end Ig.MakeDragPreview
 on Ig.LibraryPick pLine
    local tRel, tPath, tName
    if pLine is not a number then exit Ig.LibraryPick
+   if sLib["folder"] is "Gen" then
+      if pLine is 1 then
+         Ig.Streets
+      else
+         set the itemDelimiter to "/"
+         get Ig.SpawnBuilding(item 2 of line pLine of sLibList, 0, 0, false, true)
+         set the itemDelimiter to comma
+      end if
+      exit Ig.LibraryPick
+   end if
    if sLib["folder"] is "Aqua" then
       if pLine is 1 then
          Ig.AquariusLevel
@@ -457,6 +482,216 @@ on Ig.SpawnModel pLine, pX, pZ, pReplace
    put sSelected & cr after sMade
    Ig.Say "MODEL:" && toUpper(tRel) && "(" & sLib["v"] && "VERTICES," && sLib["e"] && "EDGES)" && "AT" && round(pX) && round(pZ)
 end Ig.SpawnModel
+
+-------------------------------------------------------------------- buildings (workstream A)
+-- Made from their names by Tools/v3d_buildings (Bld.*); each door and window is its own
+-- entity with hit points, as in uDead (window 10, door 60, heavy door 120, roller door 150).
+
+on Ig.UseBuildings
+   local tLib
+   if "v3d_buildings" is among the lines of the stacksInUse then exit Ig.UseBuildings
+   put Ig.ToolFile("v3d_buildings.livecodescript") into tLib
+   if there is a file tLib then start using stack tLib
+end Ig.UseBuildings
+
+-- Library > Models without the 2008 data: the 2008 names, made procedurally
+on Ig.GenLibrary
+   local tOut, tN
+   Ig.UseBuildings
+   if not ("v3d_buildings" is among the lines of the stacksInUse) then
+      Ig.Say "LIBRARY > MODELS: NO BUILDING TOOL (Tools/v3d_buildings.livecodescript) AND NO 2008 DATA"
+      exit Ig.GenLibrary
+   end if
+   put "A STREET OF EACH KIND" & cr into tOut
+   repeat for each item tN in Bld.Names("Buildings")
+      put "Buildings/" & tN & cr after tOut
+   end repeat
+   repeat for each item tN in Bld.Names("Houses")
+      put "Houses/" & tN & cr after tOut
+   end repeat
+   delete the last char of tOut
+   put tOut into sLibList
+   Ig.ShowLibrary
+   put "Gen" into sLib["folder"]
+   Ig.Say "LIBRARY > MODELS: MADE FROM THEIR NAMES (NO 2008 DATA).  CLICK ONE, OR THE FIRST LINE FOR A STREET OF EACH KIND"
+end Ig.GenLibrary
+
+-- a building on the floor at x, z (metres from the middle, the front facing -z; pTurn: facing +z).
+-- pReplace: it takes the place of the last single building. Returns its number.
+function Ig.SpawnBuilding pName, pX, pZ, pTurn, pReplace
+   local tB, tN, tKey, tPart, tColor, tPN, k, tF, tPX, tPZ
+   Ig.UseBuildings
+   put Bld.Make(pName) into tB
+   if pReplace and sSelected is not empty and sBldOf[sSelected] is not empty then
+      Ig.Kill sSelected
+      filter lines of sMade without sSelected
+   end if
+   put 1 into tF
+   if pTurn then put -1 into tF
+   Mesh.Define "Bld." & pName, tB["mesh"]
+   switch tB["kind"]
+      case "warehouse"
+         put "#7FA8C8" into tColor
+         break
+      case "shop"
+         put "#E0C060" into tColor
+         break
+      case "military"
+         put "#D07070" into tColor
+         break
+      default
+         put "#7CFF7C" into tColor
+   end switch
+   put Entity.Spawn("Bld." & pName, pX * Bld.UnitsPerMetre(), 0, pZ * Bld.UnitsPerMetre(), tColor) into tKey
+   if pTurn then SetObjectRotation tKey, 0, 3.14159, 0
+   add 1 to sBldN
+   put sBldN into tN
+   put pName into sBld[tN]["name"]
+   put tB["kind"] into sBld[tN]["kind"]
+   put tKey into sBld[tN]["shell"]
+   put tN into sBldOf[tKey]
+   put 0 into tPN
+   set the itemDelimiter to "|"
+   repeat for each line tPart in tB["parts"]
+      if tPart is empty then next repeat
+      add 1 to tPN
+      Mesh.Define Bld.PartName(item 1 of tPart, item 5 of tPart, item 6 of tPart, item 7 of tPart), Bld.PartMesh(item 1 of tPart, item 5 of tPart, item 6 of tPart, item 7 of tPart)
+      put "#9FE8FF" into tColor
+      if item 1 of tPart is not "window" then put "#C08A3A" into tColor
+      put pX + tF * item 2 of tPart into tPX
+      put pZ + tF * item 4 of tPart into tPZ
+      put Entity.Spawn(Bld.PartName(item 1 of tPart, item 5 of tPart, item 6 of tPart, item 7 of tPart), tPX * Bld.UnitsPerMetre(), -(item 3 of tPart) * Bld.UnitsPerMetre(), tPZ * Bld.UnitsPerMetre(), tColor) into sBld[tN]["key"][tPN]
+      put item 1 of tPart into sBld[tN]["kind"][tPN]
+      put item 8 of tPart into sBld[tN]["hp"][tPN]
+      put tPX & "," & -(item 3 of tPart) - item 6 of tPart / 2 & "," & tPZ into sBld[tN]["at"][tPN]
+   end repeat
+   set the itemDelimiter to comma
+   put tPN into sBld[tN]["parts"]
+   put tKey into sSelected
+   put tKey & cr after sMade
+   Ig.Say "BUILDING" && toUpper(pName) & ":" && toUpper(tB["kind"]) & "," && tB["storeys"] && "STOREYS," && round(tB["w"]) & "x" & round(tB["d"]) && "M," && tPN && "DOORS AND WINDOWS (EDIT > BOOM BREAKS THEM)"
+   return tN
+end Ig.SpawnBuilding
+
+-- a street of each kind: five warehouses, shops, homes and military buildings in four rows, timed
+on Ig.Streets
+   local t0, tRow, k, tKind, tX, tB, tW, tNames, tN, tParts, tLines
+   Ig.UseBuildings
+   put the milliseconds into t0
+   put 0 into tParts
+   put 0 into tLines
+   lock screen
+   put 0 into tRow
+   repeat for each item tKind in "warehouse,shop,home,military"
+      add 1 to tRow
+      -- the row's width first, so it can be centred
+      put empty into tNames
+      put 0 into tW
+      repeat with k = 1 to 5
+         put Bld.Make(tKind & "_" & k) into tB
+         put tKind & "_" & k & "," & tB["w"] & cr after tNames
+         add tB["w"] + 4 to tW
+         add the number of lines of tB["mesh"]["lines"] to tLines
+      end repeat
+      put -tW / 2 into tX
+      repeat for each line tB in tNames
+         add (item 2 of tB) / 2 + 2 to tX
+         put Ig.SpawnBuilding(item 1 of tB, tX, (2.5 - tRow) * 40, false, false) into tN
+         add sBld[tN]["parts"] to tParts
+         add (item 2 of tB) / 2 + 2 to tX
+      end repeat
+   end repeat
+   unlock screen
+   put the milliseconds - t0 into sBld["make"]
+   put tParts into sBld["partsMade"]
+   put tLines into sBld["lines"]
+   put 0 into sCamX
+   put -1100 into sCamY
+   put -1500 into sCamZ
+   Ig.Camera
+   Ig.Say "STREETS: 20 BUILDINGS, ONE OF EACH KIND A ROW," && tParts && "DOORS AND WINDOWS TO BREAK.  MADE AND PLACED IN" && sBld["make"] && "MS"
+end Ig.Streets
+
+-- a door or window takes pDamage; at 0 it breaks (sparks, gone), as in uDead. Returns hp left.
+function Ig.HitPart pN, pP, pDamage
+   local tAt
+   if sBld[pN]["hp"][pP] <= 0 then return 0
+   subtract pDamage from sBld[pN]["hp"][pP]
+   if sBld[pN]["hp"][pP] > 0 then return sBld[pN]["hp"][pP]
+   put 0 into sBld[pN]["hp"][pP]
+   put sBld[pN]["at"][pP] into tAt
+   FX.Sparks item 1 of tAt * Bld.UnitsPerMetre(), item 2 of tAt * Bld.UnitsPerMetre(), item 3 of tAt * Bld.UnitsPerMetre(), 10, "#FFE0A0"
+   Entity.Kill sBld[pN]["key"][pP]
+   put empty into sBld[pN]["key"][pP]
+   return 0
+end Ig.HitPart
+
+-- every door and window of building pN breaks; returns how many did
+function Ig.BreakBuilding pN
+   local k, tBroke
+   put 0 into tBroke
+   repeat with k = 1 to sBld[pN]["parts"]
+      if sBld[pN]["hp"][k] > 0 then
+         get Ig.HitPart(pN, k, 1e6)
+         add 1 to tBroke
+      end if
+   end repeat
+   if tBroke > 0 then Ig.Say "BOOM:" && tBroke && "DOORS AND WINDOWS OF" && toUpper(sBld[pN]["name"]) && "BROKEN (BOOM AGAIN TO FLATTEN IT)"
+   return tBroke
+end Ig.BreakBuilding
+
+function Ig.BreakAll
+   local tN, tBroke, k
+   put 0 into tBroke
+   repeat with tN = 1 to sBldN
+      if sBld[tN]["shell"] is not empty then
+         repeat with k = 1 to sBld[tN]["parts"]
+            if sBld[tN]["hp"][k] > 0 then
+               get Ig.HitPart(tN, k, 1e6)
+               add 1 to tBroke
+            end if
+         end repeat
+      end if
+   end repeat
+   if tBroke > 0 then Ig.Say "BOOM ALL:" && tBroke && "DOORS AND WINDOWS BROKEN (BOOM ALL AGAIN TO FLATTEN EVERYTHING)"
+   return tBroke
+end Ig.BreakAll
+
+-- an entity goes; a building takes its doors and windows with it
+on Ig.Kill pKey
+   local tN, k
+   if pKey is empty then exit Ig.Kill
+   put sBldOf[pKey] into tN
+   if tN is not empty then
+      repeat with k = 1 to sBld[tN]["parts"]
+         if sBld[tN]["key"][k] is not empty then Entity.Kill sBld[tN]["key"][k]
+      end repeat
+      put empty into sBld[tN]["shell"]
+      delete variable sBldOf[pKey]
+   end if
+   Entity.Kill pKey
+end Ig.Kill
+
+-- for the tests: buildings standing | doors and windows | of them unbroken | ms | lines
+function Ig.BldStats
+   local tN, k, tB, tP, tU
+   put 0 into tB
+   put 0 into tP
+   put 0 into tU
+   repeat with tN = 1 to sBldN
+      if sBld[tN]["shell"] is empty then next repeat
+      add 1 to tB
+      repeat with k = 1 to sBld[tN]["parts"]
+         add 1 to tP
+         if sBld[tN]["hp"][k] > 0 then add 1 to tU
+      end repeat
+   end repeat
+   return tB & "|" & tP & "|" & tU & "|" & sBld["make"] & "|" & sBld["lines"]
+end Ig.BldStats
+
+function Ig.BldPart pN, pP
+   return sBld[pN]["kind"][pP] & "|" & sBld[pN]["hp"][pP] & "|" & (sBld[pN]["key"][pP] is not empty)
+end Ig.BldPart
 
 -------------------------------------------------------------------- Aquarius (workstream B)
 -- The Aquarius character set is ONE bitmap, 128 x 128: 16 x 16 glyphs of 8 x 8, glyph n at column

@@ -52,7 +52,7 @@ teaching and research; only what's needed ships. Generated stand-ins get plain n
 
 | | Work | First result |
 |---|---|---|
-| A | **Generators** seeded by name: buildings with window rules by kind (warehouse: big, above head height; shop: knee to above head; home: hip to above head, or smaller; military: well above head) and uDead's breakable doors and windows on every one; then dungeon parts (arches, columns, walls, arched bridges), furniture, street, foliage, vehicles, weapons, containers, a vector skybox | a building generator + a street of each kind |
+| A | **Generators** seeded by name: buildings with window rules by kind (warehouse: big, above head height; shop: knee to above head; home: hip to above head, or smaller; military: well above head) and uDead's breakable doors and windows on every one; then dungeon parts (arches, columns, walls, arched bridges), furniture, street, foliage, vehicles, weapons, containers, a vector skybox | **buildings done 16 Nov** (below); the rest by name next |
 | B | **Aquarius**: AquaChar from LIB_BIT's Aquarius font (LIB_BIT inside the editor); the Aquarius level from its bitmap, 256 models from one file, timed | **done 16 Nov** (below) |
 | C | **Stick-figure characters** with role names, replacing every WTF character reference | one glTF figure + the name map |
 | D | **Scripts as files**: the Lua functions the editor calls, as xTalk files with the same hooks | the list of hooks, then the first files |
@@ -98,6 +98,27 @@ vibeapps\common\iGame3D Editor\
 - **Generated, not shipped, where possible:** a small generator (Python, in the branch) writes
   the template's meshes, emitter, level and clip from code, so most of the Data folder is
   rebuilt rather than stored.
+
+## A, buildings, done (16 Nov)
+
+- `Tools/v3d_buildings.livecodescript` (Bld.*): a building from its NAME. The name gives the kind
+  (warehouse, shop, home, military; churches, chapels and temples are homes with a steeple,
+  castles military with merlons, towers and skyscrapers tall) and the roof; its hash gives the
+  sizes, so a name always makes the same building. No file, no engine call: it hands back meshes
+  in the engine's own form, so games (DeadDays) can load it too.
+- **Your window rules**, from each storey's floor: warehouse 2.6 to 4.4 m (big, above the head),
+  shop 0.5 to 2.4 m (knee to above the head), home 0.9 to 2.1 m (hip to above the head) with some
+  smaller ones (1.4 to 2.0 m), military 2.4 to 2.9 m (no peeking). Upper storeys: homes' windows,
+  offices in tall buildings.
+- **uDead's breakable doors and windows** on the two lowest storeys, each its own entity: window
+  10 hit points (boarded cross), door 60, a military heavy door 120, a warehouse roller door 150
+  (slats). Higher windows are outlines in the shell.
+- **In the editor**, with no 2008 Data folder: Library > Models lists the 51 names (19 Buildings,
+  32 Houses); click one; the first line builds a street of each kind (20 buildings, 240 doors and
+  windows). Edit > boom breaks the selected building's doors and windows, a second boom flattens
+  it; boom all does it to everything.
+- **Speed** (test t34, the real engine from V:, headless): the four streets, 1,417 shell lines and
+  240 parts, made and placed in 110 ms; the first frame 52 ms.
 
 ## B, done (16 Nov)
 
