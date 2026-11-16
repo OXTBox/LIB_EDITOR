@@ -1,0 +1,23 @@
+iGame3D XT: the level commands (16 Nov 2026)
+
+A level is Data/Levels/<name>/load_script.xtalk: plain text, one command a line, run from top to
+bottom when the level opens (Library > Levels). Only lines beginning with "Lvl." are run; lines
+beginning with -- are notes. File > Save writes the scene in this form. Edit it in any text
+editor, or ask your AI to: that is the point. iGame3D always exposed its source.
+
+The 2008 iGame3D level was "load script.lua"; each of its hooks has an xTalk command here:
+
+  2008 Lua                                   iGame3D XT (xTalk)
+  setCameraInfo(IG3D_POSITION, x, y, z)      Lvl.Camera x, y, z          (engine units, y up is negative)
+  make(ig3d_object, "<model>.wtf")           Lvl.Object kind, name, x, z, turn [, instance name]
+    + setObjectInfo(IG3D_NAME / POSITION /     kind: building | prop | figure
+      ROTATION ...)                             name: a building name, a prop (Library > Models), a role
+  loadMesh("<level mesh>.wtf")               Lvl.Streets / Lvl.Showcase / Lvl.Aquarius (generated scenes)
+  setSceneInfo(IG3D_..., ...)                Lvl.Scene key, value        (kept with the level)
+  setLightInfo(n, IG3D_..., ...)             Lvl.Light n, key, value     (kept with the level)
+  (print)                                    Lvl.Say text                (the status line)
+
+Characters keep role names: civilian_001, soldier_001, police_001, zombie_001 ... (the 2008
+character models are replaced by our stick figure, dressed by its role).
+Python versions of these commands will come in a Python stack of their own (not yet).
+The 2008 Lua scripts themselves are kept in git (LIB_GAMES commit 5a62a5d) for the return to Lua.

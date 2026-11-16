@@ -1,0 +1,4 @@
+-- iGame3D XT level: aquarius. The 256 Aquarius characters on the floor, made from one bitmap
+-- (Data/Text/Aquarius.pbm), as the 2008 aquatext level placed them.
+Lvl.Camera 0, -560, -620
+Lvl.Aquarius
