@@ -37,12 +37,13 @@ global bPaused, bPlaying
 local sLib, sLibRoot, sLibList, sMade, sSelected, sColorN, sOrbit, sTicks, sCamX, sCamY, sCamZ, sMsgUntil, sLight
 local sAqua          -- the Aquarius bitmap and models: ["bits"], ["from"], ["keys"], the timings
 local sBld, sBldN, sBldOf   -- buildings: sBld[n] name/shell/parts; sBldOf[shell key] = n
+local sLayout         -- where things are: ["dock"] top/bottom/left/right, ["collapsed"], ["tab"], ["fps"], the free area
 local sObj, sLevel, sDataFolder, sTestPrefs   -- what each made thing is (for File > Save), the level, the chosen Data folder
 
 -- TOOLBAR_MAP: name | Unicode code point | 2007 icon | group | tooltip (iGame3D)
 constant kTools = "level|2699|console.png|editing mode|Level settings;snapshot|25D9|snapshot.png|camera tools|Snapshot of the 3D view;colors|25D0|colorball16x16.png|camera tools|Colours;light|2600|lights.png|light|Position lights;objects|263A|32x32zombie3.png|actors and effects|Access view settings (actors);particles|2733|particlesicon24x24.png|actors and effects|Particles;camera|25CE|meshView.png|camera tools|Camera / mesh view;GLController|2725|repositiontoolnew2.png|camera tools|Show/hide the GL controller;pathselect|21E2|pathSelectIcon.png|mesh tools|Path selection;path|270E|pathToolIcon.png|mesh tools|Path editing;select_mesh|25A6|tool6.png|vertex tools|Mesh editing;vertex|2022|tool2.png|vertex tools|Create vertex;line|2571|tool3.png|vertex tools|Connect vertices;disconnect|2702|tool5.png|vertex tools|Disconnect mesh line;split|22D4|tool4.png|vertex tools|Split mesh line;quad|25AD|22x22quadtool.png|primitives|Quad;cube|25A3|cube.png|primitives|Cube;dropMesh|2913|dropMeshicon.png|primitives|Drop mesh;Terrain|25B2|quad.png|primitives|Import image to terrain;Play_Game|25B6|playGameButton.png|editing mode|Play (Escape exits);sounds|266A|soundicon22x22.png|actors and effects|Sounds;cylinder|232D|cylinder.png|primitives|Cylinder;cone|25B3|cone.png|primitives|Cone;sphere|25CF|sphere.png|primitives|Sphere;WindowPickPop|2750|windows.png|windows|Open windows;bones|27DF|bone.png|mesh tools|Bones"
 
-constant kMenus = "File=Level;~New/N;~Save/S;~Reset;-;Mesh;~Save In Level;~Export;~Clear#Edit=Undo/Z;Cut/X;Copy/C;Paste/V;Select All Text/A;-;boom;boom all;-;Replace With Model...#Library=Emitters;Images;Levels;Materials;Models;Scripts;Sounds;Text;-;Set Data Folder...#Mesh=Focus Mesh/0;Goto Points;Tag Vertices/T;Duplicate Vertices/D;Extrude/E;Select;~All Vertices;~Connected/g;~Invert/i;~Attached To Bone;Face;~Face In/[;~Face Out/];~Invert Faces/*;View;~Hide/h;~Hide Other/f;~Hide All;~Show All/u;Mirror;~X;~Y;~Z;~Double Side;-;Combine Overlaps;Subdivide;-;Delete Vertices#Window=Window Snapping;Mode;~Level;~Model;Layout;~top;~bottom;~main;~free;~playgame;-;Animation Editor;Console;ig3dWTFEDITOR;Inspector;Level Collect;Library;Scene Graph;Snapshot#Dev=SAVE;-;Edit F1Script;Edit SGScript;Edit RLScript;StackScript;-;Xternals;-;stopIdle;-;pointer tool/m;-;FindT3D/3;-;scriptHarvester;OpenStacks;CustomPropLengths;RevFunctions;Harvest;-;resetiGame3D;BackUp#Help=iGame3D Help/?;Referencer;Script Commands"
+constant kMenus = "File=New Level/N;Open Level.../O;Save Level/S;-;Clear Level;-;Mesh;~Save In Level;~Export;~Clear;-;Close Window/W#Edit=Undo/Z;-;(Cut/X;(Copy/C;(Paste/V;(Select All/A;-;Replace With Model...;-;Boom;Boom All#View=Toolbar At Top;Toolbar At Bottom;Toolbar At Left;Toolbar At Right;-;Hide Tools;Show Tools;-;Frame Rate;~15 fps;~30 fps;~60 fps;-;Show Library;Hide Library#Library=Models;Levels;Text;-;Emitters;Images;Materials;Scripts;Sounds;-;Set Data Folder...#Mesh=Focus Mesh/0;Goto Points;Tag Vertices/T;Duplicate Vertices/D;Extrude/E;Select;~All Vertices;~Connected/g;~Invert/i;~Attached To Bone;Face;~Face In/[;~Face Out/];~Invert Faces/*;View;~Hide/h;~Hide Other/f;~Hide All;~Show All/u;Mirror;~X;~Y;~Z;~Double Side;-;Combine Overlaps;Subdivide;-;Delete Vertices#Dev=SAVE;-;Edit F1Script;Edit SGScript;Edit RLScript;StackScript;-;Xternals;-;stopIdle;-;pointer tool/m;-;FindT3D/3;-;scriptHarvester;OpenStacks;CustomPropLengths;RevFunctions;Harvest;-;resetiGame3D;BackUp#Window=Window Snapping;Mode;~Level;~Model;-;Animation Editor;Console;ig3dWTFEDITOR;Inspector;Level Collect;Library;Scene Graph;Snapshot#Help=iGame3D Help/?;Referencer;Script Commands"
 constant kInk = "#7CFF7C"
 
 on Game.OnStart
@@ -72,6 +73,7 @@ on Game.OnStart
    put empty into sObj
    put tKeep into sObj["testdata"]
    if sLevel is empty then put "my_level" into sLevel
+   Ig.LoadLayout
    Ig.BuildToolbar
    Ig.BuildMenus
    Ig.Say "iGAME3D MAIN UI, REMADE.  CLICK A TOOL.  HOVER FOR THE OLD TOOLTIP."
@@ -85,7 +87,7 @@ end Ig.Camera
 
 -------------------------------------------------------------------- the toolbar
 
--- one row of real buttons in a card-sized group "Ig3dTools", under the engine's status bars
+-- real buttons in a card-sized group "Ig3dTools"; Ig.Layout puts them along one side
 on Ig.BuildToolbar
    local tTool, n, x, tName, tGroup
    lock screen
@@ -94,6 +96,9 @@ on Ig.BuildToolbar
       create group "Ig3dTools"
       set the lockLoc of group "Ig3dTools" to true
       set the rect of group "Ig3dTools" to the rect of this card
+      -- the menu bar's strip first, so it lies under everything else in the group
+      reset the templateGraphic
+      create graphic "Ig3dMenuBar" in group "Ig3dTools"
    end if
    set the visible of group "Ig3dTools" to true
    put the short id of group "Ig3dTools" into tGroup
@@ -111,7 +116,6 @@ on Ig.BuildToolbar
          reset the templateButton
          create button tName in group id tGroup
       end if
-      set the rect of button tName of group id tGroup to x, 112, x + 27, 140
       set the label of button tName of group id tGroup to numToCodepoint(baseConvert(item 2 of tTool, 16, 10))
       set the textSize of button tName of group id tGroup to 17
       set the textColor of button tName of group id tGroup to Ig.GroupColor(item 4 of tTool)
@@ -122,14 +126,15 @@ on Ig.BuildToolbar
       set the toolTip of button tName of group id tGroup to item 5 of tTool & cr & "(iGame3D 2007: " & item 3 of tTool & ", " & item 4 of tTool & ")"
       set the script of button tName of group id tGroup to "on mouseUp" & cr & "   Ig.Tool the short name of me" & cr & "end mouseUp" & cr & \
             "on mouseEnter" & cr & "   Ig.Hover the short name of me" & cr & "end mouseEnter"
-      add 28 to x
    end repeat
    set the itemDel to comma
+   Ig.Layout
    unlock screen
 end Ig.BuildToolbar
 
--- the old menu bar: File Edit Library Mesh Window Dev Help, their items as in iGame3D
--- (kMenus: menus split by #, items by ;, ~ = a submenu item, /X = its shortcut letter)
+-- the menu bar, Macintosh order: File Edit View Library Mesh Dev Window Help; items as in
+-- iGame3D (kMenus: menus split by #, items by ;, ~ = a submenu item, /X = its shortcut letter,
+-- ( = not working yet, so dimmed; ... = it opens a window). The View menu ticks what is on.
 on Ig.BuildMenus
    local tMenu, tName, tText, tGroup, x
    put the short id of group "Ig3dTools" into tGroup
@@ -140,6 +145,7 @@ on Ig.BuildMenus
       put char offset("=", tMenu) + 1 to -1 of tMenu into tText
       replace ";" with cr in tText
       replace "~" with tab in tText
+      if tName is "View" then put Ig.TickView(tText) into tText
       if there is not a button ("menu_" & tName) of group id tGroup then
          reset the templateButton
          create button ("menu_" & tName) in group id tGroup
@@ -149,12 +155,271 @@ on Ig.BuildMenus
       set the label of button ("menu_" & tName) of group id tGroup to tName
       set the text of button ("menu_" & tName) of group id tGroup to tText
       set the textColor of button ("menu_" & tName) of group id tGroup to kInk
-      set the rect of button ("menu_" & tName) of group id tGroup to x, 144, x + 62, 162
+      set the showBorder of button ("menu_" & tName) of group id tGroup to false
+      set the opaque of button ("menu_" & tName) of group id tGroup to false
+      set the traversalOn of button ("menu_" & tName) of group id tGroup to false
+      set the textSize of button ("menu_" & tName) of group id tGroup to 12
       set the script of button ("menu_" & tName) of group id tGroup to "on menuPick pItem" & cr & "   Ig.Menu the label of me, pItem" & cr & "end menuPick"
-      add 64 to x
    end repeat
    set the itemDel to comma
+   Ig.Layout
 end Ig.BuildMenus
+
+-- the menu titles in order
+function Ig.MenuNames
+   local tMenu, tOut
+   set the itemDel to "#"
+   repeat for each item tMenu in kMenus
+      put char 1 to offset("=", tMenu) - 1 of tMenu & cr after tOut
+   end repeat
+   set the itemDel to comma
+   delete the last char of tOut
+   return tOut
+end Ig.MenuNames
+
+-- the View menu with a tick (!c) on the toolbar's side and the frame rate
+function Ig.TickView pText
+   local tOut, tLine, tBare
+   repeat for each line tLine in pText
+      put tLine into tBare
+      replace tab with empty in tBare
+      if tBare is ("Toolbar At" && sLayout["dock"]) or tBare is (sLayout["fps"] && "fps") then
+         if char 1 of tLine is tab then
+            put tab & "!c" & char 2 to -1 of tLine into tLine
+         else
+            put "!c" & tLine into tLine
+         end if
+      end if
+      put tLine & cr after tOut
+   end repeat
+   delete the last char of tOut
+   return tOut
+end Ig.TickView
+
+-------------------------------------------------------------------- the layout (owner 16 Nov)
+-- The menu bar is the top row, as on a Macintosh. The tool buttons sit along one side (View >
+-- Toolbar At Top, Bottom, Left or Right), after a ]< button that snaps them away; it becomes ]>,
+-- which brings them back, and which can be dragged where you like it. The Library is on the
+-- right of what is left. Kept in the settings folder: Vibecode3D/igame3d_xt_layout.txt.
+
+constant kBarH = 20
+constant kTool = 28
+
+function Ig.LayoutFile
+   return specialFolderPath("support") & "/Vibecode3D/igame3d_xt_layout.txt"
+end Ig.LayoutFile
+
+on Ig.LoadLayout
+   local tLine, tText
+   put empty into sLayout
+   if sTestPrefs is empty and there is a file Ig.LayoutFile() then
+      put textDecode(URL ("binfile:" & Ig.LayoutFile()), "UTF-8") into tText
+      set the itemDelimiter to tab
+      repeat for each line tLine in tText
+         if item 1 of tLine is not empty then put item 2 of tLine into sLayout[item 1 of tLine]
+      end repeat
+      set the itemDelimiter to comma
+   end if
+   if sLayout["dock"] is not among the items of "top,bottom,left,right" then put "top" into sLayout["dock"]
+   if sLayout["collapsed"] is not true then put false into sLayout["collapsed"]
+   if sLayout["fps"] is not among the items of "15,30,60" then put 30 into sLayout["fps"]
+   Ig.SetFPS sLayout["fps"]
+end Ig.LoadLayout
+
+on Ig.SaveLayout
+   local tDir, tOut, tKey, tErr
+   if sTestPrefs is not empty then exit Ig.SaveLayout
+   repeat for each item tKey in "dock,collapsed,tab,fps"
+      put tKey & tab & sLayout[tKey] & cr after tOut
+   end repeat
+   put specialFolderPath("support") & "/Vibecode3D" into tDir
+   try
+      if there is not a folder tDir then create folder tDir
+      put textEncode(tOut, "UTF-8") into URL ("binfile:" & Ig.LayoutFile())
+   catch tErr
+   end try
+end Ig.SaveLayout
+
+-- the frame rate while anything moves (the player's gV3DTickMS); at rest nothing is drawn
+on Ig.SetFPS pFPS
+   global gV3DTickMS
+   if pFPS is not among the items of "15,30,60" then put 30 into pFPS
+   put pFPS into sLayout["fps"]
+   put round(1000 / pFPS) into gV3DTickMS
+end Ig.SetFPS
+
+-- View > Toolbar At ...: the tools along that side, shown
+on Ig.SetDock pSide
+   if pSide is not among the items of "top,bottom,left,right" then exit Ig.SetDock
+   put pSide into sLayout["dock"]
+   put false into sLayout["collapsed"]
+   Ig.SaveLayout
+   Ig.BuildMenus
+   Ig.Say "THE TOOLS ARE ALONG THE" && toUpper(pSide) && "(VIEW > TOOLBAR AT ...)"
+end Ig.SetDock
+
+-- everything in its place: the menu bar, the tools, the free area (sLayout pLeft, pTop,
+-- pRight, pBottom) where the Library and the messages go
+on Ig.Layout
+   local tG, tW, tH, x, y, tName, tB, tTools, tN, k, tPer, tRows, tTop, tBottom, tLeft, tRight, tAt
+   if there is not a group "Ig3dTools" then exit Ig.Layout
+   put the short id of group "Ig3dTools" into tG
+   put the width of this card into tW
+   put the height of this card into tH
+   lock screen
+   set the rect of group id tG to the rect of this card
+   -- the menu bar: a strip across the top, the titles on it
+   if there is not a graphic "Ig3dMenuBar" of group id tG then
+      reset the templateGraphic
+      create graphic "Ig3dMenuBar" in group id tG
+   end if
+   if the style of graphic "Ig3dMenuBar" of group id tG is not "rectangle" then
+      set the style of graphic "Ig3dMenuBar" of group id tG to "rectangle"
+      set the opaque of graphic "Ig3dMenuBar" of group id tG to true
+      set the backgroundColor of graphic "Ig3dMenuBar" of group id tG to "#0A1A0E"
+      set the foregroundColor of graphic "Ig3dMenuBar" of group id tG to "#1C4A2A"
+   end if
+   set the rect of graphic "Ig3dMenuBar" of group id tG to -1, -1, tW + 1, kBarH
+   put 8 into x
+   repeat for each line tName in Ig.MenuNames()
+      put "menu_" & tName into tB
+      if there is not a button tB of group id tG then next repeat
+      put max(the formattedWidth of button tB of group id tG, the number of chars of tName * 7 + 14) into k
+      set the rect of button tB of group id tG to x, 1, x + k, kBarH - 1
+      add k + 2 to x
+   end repeat
+   -- the tools: ]< (or ]>) first, then the buttons, in rows or columns along one side
+   if there is not a button "Ig3dToolsTab" of group id tG then
+      reset the templateButton
+      create button "Ig3dToolsTab" in group id tG
+      set the textSize of button "Ig3dToolsTab" of group id tG to 12
+      set the textStyle of button "Ig3dToolsTab" of group id tG to "bold"
+      set the textColor of button "Ig3dToolsTab" of group id tG to kInk
+      set the backgroundColor of button "Ig3dToolsTab" of group id tG to "#0A1A0E"
+      set the borderColor of button "Ig3dToolsTab" of group id tG to "#1C4A2A"
+      set the opaque of button "Ig3dToolsTab" of group id tG to true
+      set the traversalOn of button "Ig3dToolsTab" of group id tG to false
+      set the script of button "Ig3dToolsTab" of group id tG to "on mouseDown" & cr & "   Ig.TabDown" & cr & "end mouseDown"
+   end if
+   put kBarH + 2 into tTop
+   put tH - 26 into tBottom
+   put 2 into tLeft
+   put tW - 2 into tRight
+   put tLeft into sLayout["pLeft"]
+   put tTop into sLayout["pTop"]
+   put tRight - 8 into sLayout["pRight"]
+   put tBottom - 4 into sLayout["pBottom"]
+   put empty into tTools
+   set the itemDel to "|"
+   repeat for each line tName in Ig.ToolList()
+      if there is a button (item 1 of tName) of group id tG then put item 1 of tName & cr after tTools
+   end repeat
+   set the itemDel to comma
+   put the number of lines of tTools into tN
+   if sLayout["collapsed"] then
+      repeat for each line tName in tTools
+         set the visible of button tName of group id tG to false
+      end repeat
+      set the label of button "Ig3dToolsTab" of group id tG to "]>"
+      set the toolTip of button "Ig3dToolsTab" of group id tG to "Bring the tools back (drag me to move me)"
+      put sLayout["tab"] into tAt
+      if not (tAt is a point and item 1 of tAt >= 0 and item 1 of tAt <= tW - 24 and item 2 of tAt >= kBarH and item 2 of tAt <= tH - kTool) then
+         switch sLayout["dock"]
+            case "bottom"
+               put tLeft & comma & (tBottom - kTool) into tAt
+               break
+            case "right"
+               put (tRight - 24) & comma & tTop into tAt
+               break
+            default
+               put tLeft & comma & tTop into tAt
+         end switch
+      end if
+      set the rect of button "Ig3dToolsTab" of group id tG to item 1 of tAt, item 2 of tAt, item 1 of tAt + 24, item 2 of tAt + kTool - 1
+   else
+      set the label of button "Ig3dToolsTab" of group id tG to "]<"
+      set the toolTip of button "Ig3dToolsTab" of group id tG to "Snap the tools away"
+      if sLayout["dock"] is "top" or sLayout["dock"] is "bottom" then
+         put max(1, (tRight - tLeft) div kTool) into tPer
+      else
+         put max(1, (tBottom - tTop) div kTool) into tPer
+      end if
+      put (tN + tPer) div tPer into tRows
+      repeat with k = 0 to tN
+         switch sLayout["dock"]
+            case "top"
+               put tLeft + (k mod tPer) * kTool into x
+               put tTop + (k div tPer) * kTool into y
+               break
+            case "bottom"
+               put tLeft + (k mod tPer) * kTool into x
+               put tBottom - (k div tPer + 1) * kTool into y
+               break
+            case "left"
+               put tLeft + (k div tPer) * kTool into x
+               put tTop + (k mod tPer) * kTool into y
+               break
+            case "right"
+               put tRight - (k div tPer + 1) * kTool into x
+               put tTop + (k mod tPer) * kTool into y
+               break
+         end switch
+         if k is 0 then
+            set the rect of button "Ig3dToolsTab" of group id tG to x, y, x + kTool - 1, y + kTool - 1
+         else
+            set the rect of button (line k of tTools) of group id tG to x, y, x + kTool - 1, y + kTool - 1
+            set the visible of button (line k of tTools) of group id tG to true
+         end if
+      end repeat
+      switch sLayout["dock"]
+         case "top"
+            put tTop + tRows * kTool + 4 into sLayout["pTop"]
+            break
+         case "bottom"
+            put tBottom - tRows * kTool - 4 into sLayout["pBottom"]
+            break
+         case "left"
+            put tLeft + tRows * kTool + 4 into sLayout["pLeft"]
+            break
+         case "right"
+            put tRight - tRows * kTool - 8 into sLayout["pRight"]
+            break
+      end switch
+   end if
+   set the visible of button "Ig3dToolsTab" of group id tG to true
+   put sLayout["pLeft"] + 8 into sLayout["msgX"]
+   put sLayout["pBottom"] - 18 into sLayout["msgY"]
+   Ig.PlaceLibrary
+   unlock screen
+end Ig.Layout
+
+-- ]< / ]>: a click snaps the tools away or brings them back; ]> can be dragged anywhere
+on Ig.TabDown
+   local tG, tStart, tMoved, tOffX, tOffY, tX, tY
+   put the short id of group "Ig3dTools" into tG
+   put the mouseLoc into tStart
+   put item 1 of tStart - the left of button "Ig3dToolsTab" of group id tG into tOffX
+   put item 2 of tStart - the top of button "Ig3dToolsTab" of group id tG into tOffY
+   put false into tMoved
+   repeat while the mouse is down
+      if not tMoved and sLayout["collapsed"] and abs(item 1 of the mouseLoc - item 1 of tStart) + abs(item 2 of the mouseLoc - item 2 of tStart) > 4 then put true into tMoved
+      if tMoved then
+         put max(0, min(the width of this card - 24, item 1 of the mouseLoc - tOffX)) into tX
+         put max(kBarH, min(the height of this card - kTool, item 2 of the mouseLoc - tOffY)) into tY
+         set the topLeft of button "Ig3dToolsTab" of group id tG to tX, tY
+      end if
+      wait 10 milliseconds with messages
+   end repeat
+   Ig.Wake
+   if tMoved then
+      put the topLeft of button "Ig3dToolsTab" of group id tG into sLayout["tab"]
+      Ig.SaveLayout
+      exit Ig.TabDown
+   end if
+   put not sLayout["collapsed"] into sLayout["collapsed"]
+   Ig.SaveLayout
+   Ig.Layout
+end Ig.TabDown
 
 on Ig.Menu pMenu, pItem
    Ig.Wake
@@ -164,6 +429,8 @@ on Ig.Menu pMenu, pItem
    put pMenu & "/" & item -1 of pItem into tKey
    set the itemDel to comma
    switch tKey
+      case "File/New Level"
+      case "File/Clear Level"
       case "File/New"
       case "File/Reset"
       case "File/Clear"
@@ -220,6 +487,7 @@ on Ig.Menu pMenu, pItem
             Ig.Say "DATA FOLDER:" && toUpper(it) && (there is a folder (it & "/WTF")) && "(LIBRARY > MODELS USES IT)"
          end if
          break
+      case "File/Save Level"
       case "File/Save"
          Ig.SaveLevel sLevel
          break
@@ -228,6 +496,40 @@ on Ig.Menu pMenu, pItem
          break
       case "Window/Inspector"
          Ig.OpenTool "V3D_Inspector", "v3d_inspector.livecodescript", "Insp.Build"
+         break
+      case "File/Open Level..."
+         Ig.LevelLibrary
+         break
+      case "File/Close Window"
+         send "Player.Quit" to this stack in 10 milliseconds
+         break
+      case "View/Toolbar At Top"
+      case "View/Toolbar At Bottom"
+      case "View/Toolbar At Left"
+      case "View/Toolbar At Right"
+         Ig.SetDock word -1 of pItem
+         break
+      case "View/Hide Tools"
+      case "View/Show Tools"
+         put (pItem is "Hide Tools") into sLayout["collapsed"]
+         Ig.SaveLayout
+         Ig.Layout
+         break
+      case "View/15 fps"
+      case "View/30 fps"
+      case "View/60 fps"
+         put char 6 to -1 of tKey into tKey
+         Ig.SetFPS word 1 of tKey
+         Ig.SaveLayout
+         Ig.BuildMenus
+         Ig.Say "FRAME RATE:" && sLayout["fps"] && "A SECOND WHILE ANYTHING MOVES (AT REST NOTHING IS DRAWN)"
+         break
+      case "View/Show Library"
+      case "Window/Library"
+         Ig.Library "Models"
+         break
+      case "View/Hide Library"
+         Ig.CloseLibrary
          break
       case "Edit/Replace With Model..."
          -- the models it offers first are made from their names
@@ -371,9 +673,12 @@ on Ig.Library pWhat
    Ig.Say "LIBRARY >" && toUpper(pWhat) & ":" && the number of lines of sLib["all"] && "FILES IN FOLDERS.  DOUBLE-CLICK A FOLDER (OR RETURN); CLICK A FILE (A MODEL LOADS AS A WIREFRAME)"
 end Ig.Library
 
--- the Library list on the right, filled with sLibList
+-- the Library on the right: a preview of the chosen entry over a short list, an X above.
+-- In the list a click chooses (the preview shows it), a double-click or Return / Enter opens a
+-- folder or places the model where the mouse last was in the 3D view; dragging the preview
+-- into the view places it where it is let go.
 on Ig.ShowLibrary
-   local tGroup
+   local tGroup, tN
    put the short id of group "Ig3dTools" into tGroup
    if there is not a field "Ig3dLibrary" of group id tGroup then
       reset the templateField
@@ -385,16 +690,26 @@ on Ig.ShowLibrary
       set the backgroundColor of field "Ig3dLibrary" of group id tGroup to "#061006"
       set the textColor of field "Ig3dLibrary" of group id tGroup to kInk
    end if
-   -- a click loads a file; a double-click or Return opens a folder (.. goes back up)
    set the traversalOn of field "Ig3dLibrary" of group id tGroup to true
-   set the script of field "Ig3dLibrary" of group id tGroup to "on mouseUp" & cr & "   Ig.LibraryPick the hilitedLine of me" & cr & "end mouseUp" & cr & \
+   set the script of field "Ig3dLibrary" of group id tGroup to "on mouseUp" & cr & "   Ig.LibrarySelect the hilitedLine of me" & cr & "end mouseUp" & cr & \
          "on mouseDoubleUp" & cr & "   Ig.LibraryOpen the hilitedLine of me" & cr & "end mouseDoubleUp" & cr & \
-         "on rawKeyDown pKey" & cr & "   if pKey is 65293 or pKey is 65421 then Ig.LibraryOpen the hilitedLine of me" & cr & "end rawKeyDown" & cr & \
-         "on mouseDown" & cr & "   Ig.LibraryDrag word 2 of the clickLine" & cr & "end mouseDown"
-   -- the right side of the window, whatever its size (the launcher's is 900 x 600)
-   set the rect of field "Ig3dLibrary" of group id tGroup to the width of this card - 232, 168, the width of this card - 12, the height of this card - 34
-   set the visible of field "Ig3dLibrary" of group id tGroup to true
-   -- a little X above the list's top right corner closes it
+         "on rawKeyDown pKey" & cr & "   if pKey is 65293 or pKey is 65421 then Ig.LibraryOpen the hilitedLine of me" & cr & "end rawKeyDown"
+   -- the preview: a box, and the model's wire in it; pressing on it drags the model out
+   repeat for each item tN in "Ig3dPreview,Ig3dPreviewWire"
+      if there is not a graphic tN of group id tGroup then
+         reset the templateGraphic
+         create graphic tN in group id tGroup
+         set the script of graphic tN of group id tGroup to "on mouseDown" & cr & "   Ig.PreviewDrag" & cr & "end mouseDown"
+      end if
+   end repeat
+   set the style of graphic "Ig3dPreview" of group id tGroup to "rectangle"
+   set the opaque of graphic "Ig3dPreview" of group id tGroup to true
+   set the backgroundColor of graphic "Ig3dPreview" of group id tGroup to "#061006"
+   set the foregroundColor of graphic "Ig3dPreview" of group id tGroup to "#1C4A2A"
+   set the toolTip of graphic "Ig3dPreview" of group id tGroup to "Drag the model into the 3D view"
+   set the style of graphic "Ig3dPreviewWire" of group id tGroup to "line"
+   set the foregroundColor of graphic "Ig3dPreviewWire" of group id tGroup to kInk
+   -- a little X above the preview's top right corner closes the Library
    if there is not a button "Ig3dLibraryClose" of group id tGroup then
       reset the templateButton
       create button "Ig3dLibraryClose" in group id tGroup
@@ -405,11 +720,16 @@ on Ig.ShowLibrary
       set the opaque of button "Ig3dLibraryClose" of group id tGroup to true
       set the backgroundColor of button "Ig3dLibraryClose" of group id tGroup to "#061006"
       set the textColor of button "Ig3dLibraryClose" of group id tGroup to kInk
-      set the tooltip of button "Ig3dLibraryClose" of group id tGroup to "Close the Library list"
+      set the tooltip of button "Ig3dLibraryClose" of group id tGroup to "Close the Library"
       set the script of button "Ig3dLibraryClose" of group id tGroup to "on mouseUp" & cr & "   Ig.CloseLibrary" & cr & "end mouseUp"
    end if
-   set the rect of button "Ig3dLibraryClose" of group id tGroup to the right of field "Ig3dLibrary" of group id tGroup - 20, the top of field "Ig3dLibrary" of group id tGroup - 20, the right of field "Ig3dLibrary" of group id tGroup, the top of field "Ig3dLibrary" of group id tGroup - 2
-   set the visible of button "Ig3dLibraryClose" of group id tGroup to true
+   repeat for each item tN in "field Ig3dLibrary,graphic Ig3dPreview,graphic Ig3dPreviewWire,button Ig3dLibraryClose"
+      if word 1 of tN is "field" then set the visible of field (word 2 of tN) of group id tGroup to true
+      if word 1 of tN is "graphic" then set the visible of graphic (word 2 of tN) of group id tGroup to true
+      if word 1 of tN is "button" then set the visible of button (word 2 of tN) of group id tGroup to true
+   end repeat
+   put empty into sLib["sel"]
+   Ig.PlaceLibrary
    Ig.Wake
    if sLib["browse"] is true then
       Ig.Browse
@@ -418,10 +738,237 @@ on Ig.ShowLibrary
    end if
 end Ig.ShowLibrary
 
+-- the Library's place: the right of the free area, the preview 150 high, the list under it
+on Ig.PlaceLibrary
+   local tG, tL, tR, tT, tB
+   if there is not a group "Ig3dTools" then exit Ig.PlaceLibrary
+   put the short id of group "Ig3dTools" into tG
+   if there is not a field "Ig3dLibrary" of group id tG then exit Ig.PlaceLibrary
+   put sLayout["pRight"] into tR
+   if tR is not a number then put the width of this card - 10 into tR
+   put tR - 220 into tL
+   put sLayout["pTop"] into tT
+   if tT is not a number then put 26 into tT
+   add 20 to tT
+   put sLayout["pBottom"] into tB
+   if tB is not a number then put the height of this card - 30 into tB
+   set the rect of graphic "Ig3dPreview" of group id tG to tL, tT, tR, tT + 150
+   set the rect of button "Ig3dLibraryClose" of group id tG to tR - 20, tT - 19, tR, tT - 1
+   set the rect of field "Ig3dLibrary" of group id tG to tL, tT + 154, tR, max(tT + 154 + 60, tB)
+   Ig.ShowPreview
+end Ig.PlaceLibrary
+
+-- the chosen entry's wire in the preview box (empty: nothing chosen, or a folder)
+on Ig.ShowPreview
+   local tG, tM, tR
+   if there is not a graphic "Ig3dPreviewWire" of group "Ig3dTools" then exit Ig.ShowPreview
+   put the short id of group "Ig3dTools" into tG
+   put the rect of graphic "Ig3dPreview" of group id tG into tR
+   if sLib["sel"] is empty then
+      set the points of graphic "Ig3dPreviewWire" of group id tG to empty
+      exit Ig.ShowPreview
+   end if
+   put Ig.EntryMesh(sLib["sel"]) into tM
+   set the points of graphic "Ig3dPreviewWire" of group id tG to Ig.MeshPoints(tM, item 1 of tR, item 2 of tR, item 3 of tR - item 1 of tR, item 4 of tR - item 2 of tR)
+end Ig.ShowPreview
+
+-- a click in the list: choose the entry and show it; nothing is made yet
+on Ig.LibrarySelect pLine
+   local tLine
+   Ig.Wake
+   if pLine is not a number then exit Ig.LibrarySelect
+   put line pLine of sLibList into tLine
+   if sLib["browse"] is true and (tLine is ".." or the last char of tLine is "/") then
+      put empty into sLib["sel"]
+      Ig.ShowPreview
+      Ig.Say "DOUBLE-CLICK (OR RETURN) TO OPEN" && toUpper(tLine)
+      exit Ig.LibrarySelect
+   end if
+   put pLine into sLib["sel"]
+   Ig.ShowPreview
+   if Ig.CanPlace(pLine) then
+      Ig.Say toUpper(tLine) & ": DOUBLE-CLICK OR ENTER PUTS IT WHERE THE MOUSE WAS IN THE VIEW, OR DRAG THE PREVIEW IN"
+   else
+      Ig.Say toUpper(tLine) & ": DOUBLE-CLICK OR ENTER"
+   end if
+end Ig.LibrarySelect
+
+-- a model that can be put anywhere: made from its name, or a .wtf file
+function Ig.CanPlace pLine
+   local tLine
+   put line pLine of sLibList into tLine
+   if tLine is empty or tLine is ".." or the last char of tLine is "/" then return false
+   if sLib["folder"] is "Gen" then return not (tLine begins with "A STREET" or tLine begins with "A SHOWCASE")
+   if sLib["folder"] is "WTF" then return char -4 to -1 of tLine is ".wtf"
+   return false
+end Ig.CanPlace
+
+-- the mesh of a list entry, for the preview: made from its name, read from its .wtf, or an
+-- Aquarius character
+function Ig.EntryMesh pLine
+   local tRel, tG, tN, tB
+   put Ig.LibRel(pLine) into tRel
+   if sLib["folder"] is "Aqua" then
+      if pLine > 1 then return Ig.AquaMesh(pLine - 2, 20, 12)
+      return empty
+   end if
+   if not Ig.CanPlace(pLine) then return empty
+   if sLib["folder"] is "WTF" then return Ig.WTFMesh(Ig.DataRoot() & "/WTF/" & tRel)
+   set the itemDelimiter to "/"
+   put item 1 of tRel into tG
+   put item 2 of tRel into tN
+   set the itemDelimiter to comma
+   switch tG
+      case "Buildings"
+      case "Houses"
+         Ig.UseBuildings
+         put Bld.Make(tN) into tB
+         return tB["mesh"]
+      case "Characters"
+         Ig.UseTool "v3d_figures"
+         return Fig.Make(tN)
+      default
+         Ig.UseTool "v3d_props"
+         return Prop.Make(tN)
+   end switch
+end Ig.EntryMesh
+
+-- a mesh as line-graphic points, turned 35 degrees and tipped 20, fitted in the box
+function Ig.MeshPoints pM, pLeft, pTop, pW, pH
+   local i, tX, tY, tZ, tSX, tSY, minX, maxX, minY, maxY, k, tOut, tL, a, b, cy, sy, cp, sp, tOX, tOY
+   if pM["count"] < 1 then return empty
+   put cos(0.61) into cy
+   put sin(0.61) into sy
+   put cos(0.35) into cp
+   put sin(0.35) into sp
+   put 1e9 into minX
+   put -1e9 into maxX
+   put 1e9 into minY
+   put -1e9 into maxY
+   repeat with i = 1 to pM["count"]
+      put pM["vx"][i] * cy - pM["vz"][i] * sy into tX
+      put pM["vx"][i] * sy + pM["vz"][i] * cy into tZ
+      put pM["vy"][i] * cp + tZ * sp into tY
+      put tX into tSX[i]
+      put tY into tSY[i]
+      put min(minX, tX) into minX
+      put max(maxX, tX) into maxX
+      put min(minY, tY) into minY
+      put max(maxY, tY) into maxY
+   end repeat
+   put min((pW - 16) / max(0.001, maxX - minX), (pH - 16) / max(0.001, maxY - minY)) into k
+   put pLeft + (pW - (maxX - minX) * k) / 2 into tOX
+   put pTop + (pH - (maxY - minY) * k) / 2 into tOY
+   repeat for each line tL in pM["lines"]
+      put word 1 of tL into a
+      put word 2 of tL into b
+      if tSX[a] is empty or tSX[b] is empty then next repeat
+      put round(tOX + (tSX[a] - minX) * k) & comma & round(tOY + (tSY[a] - minY) * k) & return after tOut
+      put round(tOX + (tSX[b] - minX) * k) & comma & round(tOY + (tSY[b] - minY) * k) & return & return after tOut
+   end repeat
+   return tOut
+end Ig.MeshPoints
+
+-- where the mouse last was over the 3D view (a double-click in the list puts the model there)
+on mouseMove pX, pY
+   if Ig.InView(pX, pY) then put pX & comma & pY into sLib["mouse"]
+   pass mouseMove
+end mouseMove
+
+-- a point of the 3D view: not on the menu bar, the tools or the Library
+function Ig.InView pX, pY
+   local tR
+   if pY < sLayout["pTop"] or pY > sLayout["pBottom"] then return false
+   if pX < sLayout["pLeft"] or pX > sLayout["pRight"] then return false
+   if there is a field "Ig3dLibrary" of group "Ig3dTools" then
+      if the visible of field "Ig3dLibrary" of group "Ig3dTools" and pX >= the left of field "Ig3dLibrary" of group "Ig3dTools" - 4 then return false
+   end if
+   if there is a button "Ig3dToolsTab" of group "Ig3dTools" then
+      if (pX & comma & pY) is within the rect of button "Ig3dToolsTab" of group "Ig3dTools" then return false
+   end if
+   return true
+end Ig.InView
+
+-- a model where the mouse last was in the view (the middle when it hasn't been there)
+on Ig.PlaceAtMouse pLine
+   local tXZ, tErr
+   put empty into tXZ
+   if sLib["mouse"] is not empty then
+      try
+         put Engine.ScreenToFloor(item 1 of sLib["mouse"], item 2 of sLib["mouse"], 0) into tXZ
+      catch tErr
+         put empty into tXZ
+      end try
+   end if
+   if tXZ is empty then put "0 0" into tXZ
+   Ig.PlaceAt pLine, word 1 of tXZ, word 2 of tXZ
+end Ig.PlaceAtMouse
+
+-- one more of the entry on line pLine at x, z (engine units on the floor)
+on Ig.PlaceAt pLine, pX, pZ
+   local tRel, tG, tN
+   if not Ig.CanPlace(pLine) then exit Ig.PlaceAt
+   if sLib["folder"] is "WTF" then
+      Ig.SpawnModel pLine, pX, pZ, false
+      exit Ig.PlaceAt
+   end if
+   put Ig.LibRel(pLine) into tRel
+   set the itemDelimiter to "/"
+   put item 1 of tRel into tG
+   put item 2 of tRel into tN
+   set the itemDelimiter to comma
+   if tG is "Buildings" or tG is "Houses" then
+      Ig.UseBuildings
+      get Ig.SpawnBuilding(tN, pX / Bld.UnitsPerMetre(), pZ / Bld.UnitsPerMetre(), false, false)
+   else if tG is "Characters" then
+      get Ig.SpawnThing("figure", tN, pX / 10, pZ / 10, 0, false, empty)
+   else
+      get Ig.SpawnThing("prop", tN, pX / 10, pZ / 10, 0, false, empty)
+   end if
+end Ig.PlaceAt
+
+-- pressing on the preview: drag the chosen model into the view; it is made where it is let go
+on Ig.PreviewDrag
+   local tStart, tMoved, tPrev, tX, tY, tXZ, tWhere, tLine
+   put sLib["sel"] into tLine
+   if tLine is empty or not Ig.CanPlace(tLine) then
+      Ig.Say "CLICK A MODEL IN THE LIST, THEN DRAG ITS PREVIEW INTO THE VIEW"
+      exit Ig.PreviewDrag
+   end if
+   put the screenMouseLoc into tStart
+   put false into tMoved
+   put "V3D_DragPreview" into tPrev
+   repeat while the mouse is down
+      if not tMoved and abs(item 1 of the screenMouseLoc - item 1 of tStart) + abs(item 2 of the screenMouseLoc - item 2 of tStart) > 6 then
+         put true into tMoved
+         Ig.MakeDragPreview tPrev, Ig.MeshPoints(Ig.EntryMesh(tLine), 0, 0, 110, 110)
+      end if
+      if tMoved and there is a stack tPrev then set the topLeft of stack tPrev to (item 1 of the screenMouseLoc + 14) & comma & (item 2 of the screenMouseLoc + 14)
+      wait 15 milliseconds with messages
+   end repeat
+   if there is a stack tPrev then delete stack tPrev
+   if not tMoved then exit Ig.PreviewDrag
+   put item 1 of the screenMouseLoc - the left of this stack into tX
+   put item 2 of the screenMouseLoc - the top of this stack into tY
+   if not Ig.InView(tX, tY) then
+      Ig.Say "LET GO OUTSIDE THE 3D VIEW: NOTHING ADDED"
+      exit Ig.PreviewDrag
+   end if
+   try
+      put Engine.ScreenToFloor(tX, tY, 0) into tXZ
+   catch tWhere
+      put empty into tXZ
+   end try
+   if tXZ is empty then put "0 0" into tXZ
+   Ig.PlaceAt tLine, word 1 of tXZ, word 2 of tXZ
+end Ig.PreviewDrag
+
 -- the X above the list: the list goes (Library > ... brings it back)
 on Ig.CloseLibrary
    if there is a field "Ig3dLibrary" of group "Ig3dTools" then set the visible of field "Ig3dLibrary" of group "Ig3dTools" to false
    if there is a button "Ig3dLibraryClose" of group "Ig3dTools" then set the visible of button "Ig3dLibraryClose" of group "Ig3dTools" to false
+   if there is a graphic "Ig3dPreview" of group "Ig3dTools" then set the visible of graphic "Ig3dPreview" of group "Ig3dTools" to false
+   if there is a graphic "Ig3dPreviewWire" of group "Ig3dTools" then set the visible of graphic "Ig3dPreviewWire" of group "Ig3dTools" to false
    focus on nothing
    Ig.Say "LIBRARY CLOSED (THE LIBRARY MENU OPENS IT AGAIN)"
 end Ig.CloseLibrary
@@ -469,6 +1016,10 @@ on Ig.LibraryOpen pLine
    local tLine
    if pLine is not a number then exit Ig.LibraryOpen
    put line pLine of sLibList into tLine
+   if Ig.CanPlace(pLine) then
+      Ig.PlaceAtMouse pLine
+      exit Ig.LibraryOpen
+   end if
    if sLib["browse"] is not true then
       Ig.LibraryPick pLine
       exit Ig.LibraryOpen
@@ -577,40 +1128,6 @@ end Ig.OpenTool
 
 -- A-87: press on a model in the Library and drag: a small window with the model's wire follows the
 -- mouse; let go over the 3D view and the model lands on the floor there. A plain click still loads it.
-on Ig.LibraryDrag pLine
-   local tStart, tMoved, tPrev, tPath, tWhere, tX, tY, tXZ
-   if pLine is not a number or sLib["folder"] is not "WTF" then exit Ig.LibraryDrag
-   if char -4 to -1 of line pLine of sLibList is not ".wtf" then exit Ig.LibraryDrag
-   put Ig.DataRoot() & "/WTF/" & Ig.LibRel(pLine) into tPath
-   put the screenMouseLoc into tStart
-   put false into tMoved
-   put "V3D_DragPreview" into tPrev
-   repeat while the mouse is down
-      if not tMoved and abs(item 1 of the screenMouseLoc - item 1 of tStart) + abs(item 2 of the screenMouseLoc - item 2 of tStart) > 8 then
-         put true into tMoved
-         Ig.MakeDragPreview tPrev, tPath
-      end if
-      if tMoved and there is a stack tPrev then set the topLeft of stack tPrev to (item 1 of the screenMouseLoc + 14) & comma & (item 2 of the screenMouseLoc + 14)
-      wait 15 milliseconds with messages
-   end repeat
-   if not tMoved then exit Ig.LibraryDrag
-   if there is a stack tPrev then delete stack tPrev
-   -- where it was let go, in this card's coordinates
-   put item 1 of the screenMouseLoc - the left of this stack into tX
-   put item 2 of the screenMouseLoc - the top of this stack into tY
-   if tX < 0 or tY < 0 or tX > the width of this stack or tY > the height of this stack then
-      Ig.Say "DROPPED OUTSIDE THE 3D VIEW: NOTHING ADDED"
-      exit Ig.LibraryDrag
-   end if
-   if (tX & comma & tY) is within the rect of field "Ig3dLibrary" of group "Ig3dTools" then exit Ig.LibraryDrag
-   try
-      put Engine.ScreenToFloor(tX, tY, 0) into tXZ
-   catch tWhere
-      put empty into tXZ      -- an engine without the editor hooks: the centre
-   end try
-   if tXZ is empty then put "0 0" into tXZ
-   Ig.SpawnModel pLine, word 1 of tXZ, word 2 of tXZ, false
-end Ig.LibraryDrag
 
 -- a tool window's script: Tools/<pFile> beside this script (iGame3D XT carries its own), else
 -- LIB_ig3d/livecode/<pFile> in the projects
@@ -628,11 +1145,8 @@ function Ig.ToolFile pFile
    return Ig.Projects() & "/LIB_ig3d/livecode/" & pFile
 end Ig.ToolFile
 
--- the drag preview: a small borderless window with the model's wire (LIB_ig3d v3d_models)
-on Ig.MakeDragPreview pStack, pPath
-   local tLib
-   put Ig.ToolFile("v3d_models.livecodescript") into tLib
-   if not ("v3d_models" is among the lines of the stacksInUse) and there is a file tLib then start using stack tLib
+-- the drag preview: a small borderless window with the model's wire (pPoints, Ig.MeshPoints)
+on Ig.MakeDragPreview pStack, pPoints
    lock messages
    create invisible stack pStack
    set the decorations of stack pStack to empty
@@ -644,11 +1158,7 @@ on Ig.MakeDragPreview pStack, pPath
    create graphic "Wire"
    set the style of graphic "Wire" to "line"
    set the foregroundColor of graphic "Wire" to kInk
-   try
-      set the points of graphic "Wire" to Model.PreviewPoints(pPath, 0, 0, 110)
-   catch tLib
-      -- no preview library: an empty window still shows where the drop goes
-   end try
+   set the points of graphic "Wire" to pPoints
    set the defaultStack to the short name of this stack
    unlock messages
    set the topLeft of stack pStack to (item 1 of the screenMouseLoc + 14) & comma & (item 2 of the screenMouseLoc + 14)
@@ -1604,7 +2114,9 @@ end Ig.Recolor
 
 on Ig.Say pText
    Ig.Wake
-   HUD.Set "Ig.Msg", pText, 10, 660, 11
+   if sLayout["msgY"] is not a number then put the height of this card - 44 into sLayout["msgY"]
+   if sLayout["msgX"] is not a number then put 10 into sLayout["msgX"]
+   HUD.Set "Ig.Msg", pText, sLayout["msgX"], sLayout["msgY"], 11
    put sTicks + 150 into sMsgUntil
 end Ig.Say
 
@@ -1616,10 +2128,12 @@ on Game.OnUpdate
    put sSelected into gV3DSelected     -- the Inspector's Object page shows it
    add 1 to sTicks
    put the keysDown into tKeys
-   if 119 is among the items of tKeys or 65362 is among the items of tKeys then add 8 to sCamZ
-   if 115 is among the items of tKeys or 65364 is among the items of tKeys then subtract 8 from sCamZ
-   if 97 is among the items of tKeys or 65361 is among the items of tKeys then subtract 8 from sCamX
-   if 100 is among the items of tKeys or 65363 is among the items of tKeys then add 8 to sCamX
+   local tStep
+   put 8 * 30 / max(15, sLayout["fps"]) into tStep
+   if 119 is among the items of tKeys or 65362 is among the items of tKeys then add tStep to sCamZ
+   if 115 is among the items of tKeys or 65364 is among the items of tKeys then subtract tStep from sCamZ
+   if 97 is among the items of tKeys or 65361 is among the items of tKeys then subtract tStep from sCamX
+   if 100 is among the items of tKeys or 65363 is among the items of tKeys then add tStep to sCamX
    if sOrbit then
       put 520 * sin(sTicks / 90) into sCamX
       put -520 * cos(sTicks / 90) into sCamZ
@@ -1655,6 +2169,8 @@ on Game.OnResume
 end Game.OnResume
 
 on Game.OnStop
+   global gV3DTickMS
+   put empty into gV3DTickMS
    HUD.Clear
    if there is a group "Ig3dTools" then set the visible of group "Ig3dTools" to false
 end Game.OnStop
