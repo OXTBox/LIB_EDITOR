@@ -20,6 +20,13 @@
 ##   buildings made from their names (Tools/v3d_buildings); its first line builds a street of each
 ##   kind (warehouse, shop, home, military). Their doors and windows break as uDead's do:
 ##   Edit > boom breaks the selected building's, a second boom flattens it; boom all, all of them.
+## PROPS, CHARACTERS, LEVELS (workstreams A, C, D, F; 16 Nov 2026): Library > Models also lists
+##   123 props in 17 groups (Tools/v3d_props) and 14 characters (Tools/v3d_figures, our stick
+##   figure by role), and a showcase of every one. Levels are xTalk files anyone can edit:
+##   Data/Levels/<name>/load_script.xtalk, lines of Lvl.Camera / Lvl.Object / Lvl.Aquarius ...
+##   (the 2008 Lua hooks, in xTalk; Data/Scripts/LEVEL_API.txt); Library > Levels opens one,
+##   File > Save writes the scene to one. Library > Set Data Folder... points the editor at a full
+##   2008-style Data folder; without one it needs nothing outside its own folder.
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
 ######################################################################################
 
@@ -30,14 +37,16 @@ global bPaused, bPlaying
 local sLib, sLibRoot, sLibList, sMade, sSelected, sColorN, sOrbit, sTicks, sCamX, sCamY, sCamZ, sMsgUntil, sLight
 local sAqua          -- the Aquarius bitmap and models: ["bits"], ["from"], ["keys"], the timings
 local sBld, sBldN, sBldOf   -- buildings: sBld[n] name/shell/parts; sBldOf[shell key] = n
+local sObj, sLevel, sDataFolder, sTestPrefs   -- what each made thing is (for File > Save), the level, the chosen Data folder
 
 -- TOOLBAR_MAP: name | Unicode code point | 2007 icon | group | tooltip (iGame3D)
 constant kTools = "level|2699|console.png|editing mode|Level settings;snapshot|25D9|snapshot.png|camera tools|Snapshot of the 3D view;colors|25D0|colorball16x16.png|camera tools|Colours;light|2600|lights.png|light|Position lights;objects|263A|32x32zombie3.png|actors and effects|Access view settings (actors);particles|2733|particlesicon24x24.png|actors and effects|Particles;camera|25CE|meshView.png|camera tools|Camera / mesh view;GLController|2725|repositiontoolnew2.png|camera tools|Show/hide the GL controller;pathselect|21E2|pathSelectIcon.png|mesh tools|Path selection;path|270E|pathToolIcon.png|mesh tools|Path editing;select_mesh|25A6|tool6.png|vertex tools|Mesh editing;vertex|2022|tool2.png|vertex tools|Create vertex;line|2571|tool3.png|vertex tools|Connect vertices;disconnect|2702|tool5.png|vertex tools|Disconnect mesh line;split|22D4|tool4.png|vertex tools|Split mesh line;quad|25AD|22x22quadtool.png|primitives|Quad;cube|25A3|cube.png|primitives|Cube;dropMesh|2913|dropMeshicon.png|primitives|Drop mesh;Terrain|25B2|quad.png|primitives|Import image to terrain;Play_Game|25B6|playGameButton.png|editing mode|Play (Escape exits);sounds|266A|soundicon22x22.png|actors and effects|Sounds;cylinder|232D|cylinder.png|primitives|Cylinder;cone|25B3|cone.png|primitives|Cone;sphere|25CF|sphere.png|primitives|Sphere;WindowPickPop|2750|windows.png|windows|Open windows;bones|27DF|bone.png|mesh tools|Bones"
 
-constant kMenus = "File=Level;~New/N;~Save/S;~Reset;-;Mesh;~Save In Level;~Export;~Clear#Edit=Undo/Z;Cut/X;Copy/C;Paste/V;Select All Text/A;-;boom;boom all;-;Replace With Model...#Library=Emitters;Images;Levels;Materials;Models;Scripts;Sounds;Text#Mesh=Focus Mesh/0;Goto Points;Tag Vertices/T;Duplicate Vertices/D;Extrude/E;Select;~All Vertices;~Connected/g;~Invert/i;~Attached To Bone;Face;~Face In/[;~Face Out/];~Invert Faces/*;View;~Hide/h;~Hide Other/f;~Hide All;~Show All/u;Mirror;~X;~Y;~Z;~Double Side;-;Combine Overlaps;Subdivide;-;Delete Vertices#Window=Window Snapping;Mode;~Level;~Model;Layout;~top;~bottom;~main;~free;~playgame;-;Animation Editor;Console;ig3dWTFEDITOR;Inspector;Level Collect;Library;Scene Graph;Snapshot#Dev=SAVE;-;Edit F1Script;Edit SGScript;Edit RLScript;StackScript;-;Xternals;-;stopIdle;-;pointer tool/m;-;FindT3D/3;-;scriptHarvester;OpenStacks;CustomPropLengths;RevFunctions;Harvest;-;resetiGame3D;BackUp#Help=iGame3D Help/?;Referencer;Script Commands"
+constant kMenus = "File=Level;~New/N;~Save/S;~Reset;-;Mesh;~Save In Level;~Export;~Clear#Edit=Undo/Z;Cut/X;Copy/C;Paste/V;Select All Text/A;-;boom;boom all;-;Replace With Model...#Library=Emitters;Images;Levels;Materials;Models;Scripts;Sounds;Text;-;Set Data Folder...#Mesh=Focus Mesh/0;Goto Points;Tag Vertices/T;Duplicate Vertices/D;Extrude/E;Select;~All Vertices;~Connected/g;~Invert/i;~Attached To Bone;Face;~Face In/[;~Face Out/];~Invert Faces/*;View;~Hide/h;~Hide Other/f;~Hide All;~Show All/u;Mirror;~X;~Y;~Z;~Double Side;-;Combine Overlaps;Subdivide;-;Delete Vertices#Window=Window Snapping;Mode;~Level;~Model;Layout;~top;~bottom;~main;~free;~playgame;-;Animation Editor;Console;ig3dWTFEDITOR;Inspector;Level Collect;Library;Scene Graph;Snapshot#Dev=SAVE;-;Edit F1Script;Edit SGScript;Edit RLScript;StackScript;-;Xternals;-;stopIdle;-;pointer tool/m;-;FindT3D/3;-;scriptHarvester;OpenStacks;CustomPropLengths;RevFunctions;Harvest;-;resetiGame3D;BackUp#Help=iGame3D Help/?;Referencer;Script Commands"
 constant kInk = "#7CFF7C"
 
 on Game.OnStart
+   local tKeep
    focus on nothing          -- arrow keys belong to the game, never to a menu or a field
    Engine.ResetCamera
    Scene.ClearAll
@@ -55,6 +64,13 @@ on Game.OnStart
    Ig.Camera
    Mesh.Define "Ig.Floor", MeshGrid(16, 16, 50)
    get Entity.Spawn("Ig.Floor", 0, 0, 0, "#0A280A")
+   -- the axes: x red, z blue, up green
+   Mesh.Define "Ig.Axes", Ig.AxesMesh()
+   get Entity.Spawn("Ig.Axes", 0, -0.5, 0, "#FF5050")
+   put sObj["testdata"] into tKeep
+   put empty into sObj
+   put tKeep into sObj["testdata"]
+   if sLevel is empty then put "my_level" into sLevel
    Ig.BuildToolbar
    Ig.BuildMenus
    Ig.Say "iGAME3D MAIN UI, REMADE.  CLICK A TOOL.  HOVER FOR THE OLD TOOLTIP."
@@ -195,6 +211,19 @@ on Ig.Menu pMenu, pItem
       case "Library/Text"
          Ig.Library char offset("/", tKey) + 1 to -1 of tKey
          break
+      case "Library/Set Data Folder..."
+         answer folder "A full iGame3D Data folder (the one holding WTF, Levels, Scripts...):"
+         if it is not empty then
+            Ig.SetDataFolder it
+            Ig.Say "DATA FOLDER:" && toUpper(it) && (there is a folder (it & "/WTF")) && "(LIBRARY > MODELS USES IT)"
+         end if
+         break
+      case "File/Save"
+         Ig.SaveLevel sLevel
+         break
+      case "Help/iGame3D Help"
+         Ig.Help
+         break
       case "Window/Inspector"
          Ig.OpenTool "V3D_Inspector", "v3d_inspector.livecodescript", "Insp.Build"
          break
@@ -219,24 +248,67 @@ end Ig.Menu
 
 -- the 2008 iGame3D Data folder (LIB_GAMES/igame3D_2008_Texts), found above this stack or in WSL
 function Ig.DataRoot
-   local tPath, tTry
+   -- a full 2008-style Data folder, only when one is chosen (Library > Set Data Folder...);
+   -- this edition's own things are in Ig.XTData()
+   local tF
    if sLibRoot is not empty then return sLibRoot
+   put Ig.ChosenFolder() into tF
+   if tF is not empty and there is a folder (tF & "/WTF") then put tF into sLibRoot
+   return sLibRoot
+end Ig.DataRoot
+
+-- the chosen Data folder, remembered in the settings folder (Vibecode3D/igame3d_xt.txt)
+function Ig.ChosenFolder
+   local tF
+   if sTestPrefs is not empty then return sDataFolder
+   put specialFolderPath("support") & "/Vibecode3D/igame3d_xt.txt" into tF
+   if there is not a file tF then return empty
+   return line 1 of textDecode(URL ("binfile:" & tF), "UTF-8")
+end Ig.ChosenFolder
+
+on Ig.SetDataFolder pFolder
+   local tDir
+   replace "\" with "/" in pFolder
+   put pFolder into sDataFolder
+   put empty into sLibRoot
+   if sTestPrefs is not empty then exit Ig.SetDataFolder
+   put specialFolderPath("support") & "/Vibecode3D" into tDir
+   if there is not a folder tDir then create folder tDir
+   put textEncode(pFolder, "UTF-8") into URL ("binfile:" & tDir & "/igame3d_xt.txt")
+end Ig.SetDataFolder
+
+-- test hook: use pFolder as this edition's Data folder (levels are saved there)
+on Ig.TestXTData pFolder
+   put pFolder into sObj["testdata"]
+end Ig.TestXTData
+
+-- test hook: keep the chosen folder in this session only
+on Ig.TestPrefs pFlag
+   put pFlag into sTestPrefs
+end Ig.TestPrefs
+
+-- this edition's own Data folder: Data/ beside the script, else LIB_EDITOR/iGame3D_XT/Data above
+function Ig.XTData
+   local tDir, tErr, tPath
+   if sObj["testdata"] is not empty then return sObj["testdata"]
+   set the itemDelimiter to "/"
+   put empty into tDir
+   try
+      put the uScriptFile of (the long owner of me) into tDir
+   catch tErr
+      put empty into tDir
+   end try
+   replace "\" with "/" in tDir
+   if tDir contains "/" and there is a folder (item 1 to -2 of tDir & "/Data") then return item 1 to -2 of tDir & "/Data"
    put the effective filename of this stack into tPath
    replace "\" with "/" in tPath
-   set the itemDel to "/"
    repeat 8 times
       delete item -1 of tPath
       if tPath is empty then exit repeat
-      put tPath & "/LIB_GAMES/igame3D_2008_Texts" into tTry
-      if there is a folder tTry then
-         put tTry into sLibRoot
-         return tTry
-      end if
+      if there is a folder (tPath & "/LIB_EDITOR/iGame3D_XT/Data") then return tPath & "/LIB_EDITOR/iGame3D_XT/Data"
    end repeat
-   put "//wsl$/Ubuntu/home/igame3d/projects/LIB_GAMES/igame3D_2008_Texts" into tTry
-   if there is a folder tTry then put tTry into sLibRoot
-   return sLibRoot
-end Ig.DataRoot
+   return empty
+end Ig.XTData
 
 -- Library > Models / Levels / Emitters / Scripts: the files in a list on the right
 on Ig.Library pWhat
@@ -250,6 +322,10 @@ on Ig.Library pWhat
       exit Ig.Library
    end if
    put Ig.DataRoot() into tRoot
+   if tRoot is empty and pWhat is "Levels" then
+      Ig.LevelLibrary
+      exit Ig.Library
+   end if
    if tRoot is empty and pWhat is "Models" then
       -- no 2008 Data folder: the models are made from their names
       Ig.GenLibrary
@@ -443,13 +519,28 @@ on Ig.LibraryPick pLine
    local tRel, tPath, tName
    if pLine is not a number then exit Ig.LibraryPick
    if sLib["folder"] is "Gen" then
+      put line pLine of sLibList into tRel
       if pLine is 1 then
          Ig.Streets
+      else if tRel begins with "A SHOWCASE" then
+         Ig.Showcase
       else
          set the itemDelimiter to "/"
-         get Ig.SpawnBuilding(item 2 of line pLine of sLibList, 0, 0, false, true)
+         put item 1 of tRel into tName
+         put item 2 of tRel into tRel
          set the itemDelimiter to comma
+         if tName is "Buildings" or tName is "Houses" then
+            get Ig.SpawnBuilding(tRel, 0, 0, false, true)
+         else if tName is "Characters" then
+            get Ig.SpawnThing("figure", tRel, 0, 0, 0, true, empty)
+         else
+            get Ig.SpawnThing("prop", tRel, 0, 0, 0, true, empty)
+         end if
       end if
+      exit Ig.LibraryPick
+   end if
+   if sLib["folder"] is "Levels" then
+      Ig.RunLevel Ig.XTData() & "/Levels/" & line pLine of sLibList & "/load_script.xtalk"
       exit Ig.LibraryPick
    end if
    if sLib["folder"] is "Aqua" then
@@ -488,15 +579,258 @@ end Ig.SpawnModel
 -- entity with hit points, as in uDead (window 10, door 60, heavy door 120, roller door 150).
 
 on Ig.UseBuildings
-   local tLib
-   if "v3d_buildings" is among the lines of the stacksInUse then exit Ig.UseBuildings
-   put Ig.ToolFile("v3d_buildings.livecodescript") into tLib
-   if there is a file tLib then start using stack tLib
+   Ig.UseTool "v3d_buildings"
 end Ig.UseBuildings
+
+on Ig.UseTool pName
+   local tLib
+   if pName is among the lines of the stacksInUse then exit Ig.UseTool
+   put Ig.ToolFile(pName & ".livecodescript") into tLib
+   if there is a file tLib then start using stack tLib
+end Ig.UseTool
+
+-------------------------------------------------------------------- props and characters (A, C)
+
+-- a prop or a character on the floor at x, z (metres), turned pRot radians; pReplace: it takes the
+-- place of the last single one; pInst: a character's name (soldier_001). Returns its entity.
+function Ig.SpawnThing pKind, pName, pX, pZ, pRot, pReplace, pInst
+   local tMesh, tKey, tColor, tM
+   if pKind is "figure" then
+      Ig.UseTool "v3d_figures"
+      put "Fig." & pName into tMesh
+      put Fig.Make(pName) into tM
+      if pInst is empty then
+         add 1 to sObj["n" & pName]
+         put Fig.Instance(pName, sObj["n" & pName]) into pInst
+      end if
+      put "#FFB060" into tColor
+      if pName is "zombie" then put "#80FF80" into tColor
+      if pName is "police" or pName is "soldier" then
+         put "#80B0FF" into tColor
+      end if
+   else
+      Ig.UseTool "v3d_props"
+      put "Prop." & pName into tMesh
+      put Prop.Make(pName) into tM
+      put Ig.NextColor() into tColor
+   end if
+   Mesh.Define tMesh, tM
+   if pReplace and sSelected is not empty and (sObj[sSelected] begins with "prop|" or sObj[sSelected] begins with "figure|") then
+      Ig.Kill sSelected
+      filter lines of sMade without sSelected
+   end if
+   put Entity.Spawn(tMesh, pX * 10, 0, pZ * 10, tColor) into tKey
+   if pRot is not 0 then SetObjectRotation tKey, 0, pRot, 0
+   put pKind & "|" & pName & "|" & pX & "|" & pZ & "|" & pRot & "|" & pInst into sObj[tKey]
+   put tKey into sSelected
+   put tKey & cr after sMade
+   if pKind is "figure" then
+      Ig.Say "CHARACTER" && toUpper(pInst) & ": OUR STICK FIGURE AS A" && toUpper(pName) && "(" & tM["count"] && "VERTICES)"
+   else
+      Ig.Say "MODEL" && toUpper(pName) && "(" & toUpper(Prop.GroupOf(pName)) & "):" && tM["count"] && "VERTICES, MADE FROM ITS NAME"
+   end if
+   return tKey
+end Ig.SpawnThing
+
+-- one of every prop and character, in rows of twelve, timed (skies and floors left out: too big)
+on Ig.Showcase
+   local t0, tG, tN, k, tX, tZ, tList
+   Ig.UseTool "v3d_props"
+   Ig.UseTool "v3d_figures"
+   repeat for each item tG in Prop.Groups()
+      if tG is "Sky" or tG is "Floors" then next repeat
+      repeat for each item tN in Prop.Names(tG)
+         put "prop," & tN & cr after tList
+      end repeat
+   end repeat
+   repeat for each item tN in Fig.Roles()
+      put "figure," & tN & cr after tList
+   end repeat
+   put the milliseconds into t0
+   lock screen
+   put 0 into k
+   repeat for each line tN in tList
+      put ((k mod 12) - 5.5) * 7 into tX
+      put (k div 12) * 7 - 30 into tZ
+      get Ig.SpawnThing(item 1 of tN, item 2 of tN, tX, tZ, 0, false, empty)
+      add 1 to k
+   end repeat
+   unlock screen
+   put the milliseconds - t0 into sObj["showcase"]
+   put k into sObj["showcaseN"]
+   put 0 into sCamX
+   put -700 into sCamY
+   put -1100 into sCamZ
+   Ig.Camera
+   Ig.Say "SHOWCASE:" && k && "MODELS, EVERY ONE MADE FROM ITS NAME, IN" && sObj["showcase"] && "MS"
+end Ig.Showcase
+
+-------------------------------------------------------------------- levels as xTalk files (D)
+-- A level is Data/Levels/<name>/load_script.xtalk: lines of Lvl.* commands, the 2008 Lua
+-- hooks in xTalk (loadMesh / make + setObjectInfo -> Lvl.Object, setCameraInfo -> Lvl.Camera,
+-- setSceneInfo -> Lvl.Scene, setLightInfo -> Lvl.Light). Anyone, or their AI, can edit one in a
+-- text editor; only lines that begin with Lvl. are run.
+
+on Ig.LevelLibrary
+   local tDir, tOut, tF
+   put Ig.XTData() & "/Levels" into tDir
+   if there is not a folder tDir then
+      Ig.Say "LIBRARY > LEVELS: NO LEVELS FOLDER (" & tDir & ")"
+      exit Ig.LevelLibrary
+   end if
+   repeat for each line tF in folders(tDir)
+      if tF is "." or tF is ".." then next repeat
+      if there is a file (tDir & "/" & tF & "/load_script.xtalk") then put tF & cr after tOut
+   end repeat
+   delete the last char of tOut
+   sort lines of tOut
+   put tOut into sLibList
+   Ig.ShowLibrary
+   put "Levels" into sLib["folder"]
+   Ig.Say "LIBRARY > LEVELS:" && the number of lines of tOut && "LEVELS (XTALK FILES: Data/Levels/<NAME>/load_script.xtalk).  CLICK ONE"
+end Ig.LevelLibrary
+
+-- run a level file; returns nothing, says how many lines ran
+on Ig.RunLevel pFile
+   local tText, tLine, tRan, tSkip, tErr, tName
+   if there is not a file pFile then
+      Ig.Say "NO LEVEL FILE:" && pFile
+      exit Ig.RunLevel
+   end if
+   Ig.Menu "File", "Clear"
+   set the itemDelimiter to "/"
+   put item -2 of pFile into sLevel
+   set the itemDelimiter to comma
+   put textDecode(URL ("binfile:" & pFile), "UTF-8") into tText
+   replace numToChar(13) with empty in tText
+   put 0 into tRan
+   put 0 into tSkip
+   repeat for each line tLine in tText
+      put word 1 to -1 of tLine into tLine
+      if tLine is empty or tLine begins with "--" or tLine begins with "#" then next repeat
+      if not (word 1 of tLine begins with "Lvl.") then
+         add 1 to tSkip
+         next repeat
+      end if
+      try
+         do tLine
+         add 1 to tRan
+      catch tErr
+         add 1 to tSkip
+      end try
+   end repeat
+   put tRan & "," & tSkip into sObj["ran"]
+   Ig.Say "LEVEL" && toUpper(sLevel) & ":" && tRan && "LINES RUN" & (tSkip > 0) && "(" & tSkip && "SKIPPED)"
+end Ig.RunLevel
+
+-- write the scene as a level file: the camera, then every thing made, in order
+on Ig.SaveLevel pName
+   local tDir, tText, tKey, tRec
+   put Ig.XTData() & "/Levels" into tDir
+   if Ig.XTData() is empty then
+      Ig.Say "NO DATA FOLDER TO SAVE INTO"
+      exit Ig.SaveLevel
+   end if
+   if there is not a folder tDir then create folder tDir
+   if there is not a folder (tDir & "/" & pName) then create folder (tDir & "/" & pName)
+   put "-- iGame3D XT level: " & pName & ", saved " & the long date && the time & cr & \
+         "-- Edit freely: one Lvl. command a line (Data/Scripts/LEVEL_API.txt). Lines that do not" & cr & \
+         "-- begin with Lvl. are left alone." & cr & \
+         "Lvl.Camera " & sCamX & ", " & sCamY & ", " & sCamZ & cr into tText
+   if sAqua["keys"] is not empty then put "Lvl.Aquarius" & cr after tText
+   set the itemDelimiter to "|"
+   repeat for each line tKey in sMade
+      put sObj[tKey] into tRec
+      if tRec is empty then next repeat
+      if item 1 of tRec is "building" then
+         put "Lvl.Object " & quote & "building" & quote & ", " & quote & item 2 of tRec & quote & ", " & item 3 of tRec & ", " & item 4 of tRec & ", " & item 5 of tRec & cr after tText
+      else
+         put "Lvl.Object " & quote & item 1 of tRec & quote & ", " & quote & item 2 of tRec & quote & ", " & item 3 of tRec & ", " & item 4 of tRec & ", " & item 5 of tRec & ", " & quote & item 6 of tRec & quote & cr after tText
+      end if
+   end repeat
+   set the itemDelimiter to comma
+   put textEncode(tText, "UTF-8") into URL ("binfile:" & tDir & "/" & pName & "/load_script.xtalk")
+   put pName into sLevel
+   Ig.Say "SAVED:" && tDir & "/" & pName & "/load_script.xtalk"
+end Ig.SaveLevel
+
+-- the level commands (the hooks a level file calls)
+on Lvl.Camera pX, pY, pZ
+   put pX into sCamX
+   put pY into sCamY
+   put pZ into sCamZ
+   Ig.Camera
+end Lvl.Camera
+
+-- kind: building (pRot: true = facing +z), prop, figure (pInst: its name)
+on Lvl.Object pKind, pName, pX, pZ, pRot, pInst
+   if pKind is "building" then
+      get Ig.SpawnBuilding(pName, pX, pZ, pRot is true, false)
+   else
+      if pRot is empty then put 0 into pRot
+      get Ig.SpawnThing(pKind, pName, pX, pZ, pRot, false, pInst)
+   end if
+end Lvl.Object
+
+on Lvl.Aquarius
+   Ig.AquariusLevel
+end Lvl.Aquarius
+
+on Lvl.Streets
+   Ig.Streets
+end Lvl.Streets
+
+on Lvl.Showcase
+   Ig.Showcase
+end Lvl.Showcase
+
+on Lvl.Scene pKey, pValue
+   put pValue into sObj["scene"][pKey]
+end Lvl.Scene
+
+on Lvl.Light pN, pKey, pValue
+   put pValue into sObj["light"][pN][pKey]
+end Lvl.Light
+
+on Lvl.Say pText
+   Ig.Say pText
+end Lvl.Say
+
+-- Help > iGame3D Help: the 2008 help pages, kept as legacy documentation
+on Ig.Help
+   local tF
+   put Ig.XTData() into tF
+   set the itemDelimiter to "/"
+   put item 1 to -2 of tF & "/Help_2008/index.html" into tF
+   set the itemDelimiter to comma
+   if there is not a file tF then
+      Ig.Say "NO HELP PAGES (" & tF & ")"
+      exit Ig.Help
+   end if
+   launch url ("file://" & tF)
+   Ig.Say "THE 2008 HELP (LEGACY DOCUMENTATION) IN YOUR BROWSER"
+end Ig.Help
+
+function Ig.ObjStats
+   return the number of lines of sMade & "|" & sObj["showcaseN"] & "|" & sObj["showcase"] & "|" & sObj["ran"] & "|" & sLevel
+end Ig.ObjStats
+
+function Ig.AxesMesh
+   local tM
+   put Mesh.New() into tM
+   Mesh.AddVertex tM, 0, 0, 0
+   Mesh.AddVertex tM, 120, 0, 0
+   Mesh.AddVertex tM, 0, 0, 120
+   Mesh.AddVertex tM, 0, -120, 0
+   Mesh.AddLine tM, 1, 2
+   Mesh.AddLine tM, 1, 3
+   Mesh.AddLine tM, 1, 4
+   return tM
+end Ig.AxesMesh
 
 -- Library > Models without the 2008 data: the 2008 names, made procedurally
 on Ig.GenLibrary
-   local tOut, tN
+   local tOut, tN, tG
    Ig.UseBuildings
    if not ("v3d_buildings" is among the lines of the stacksInUse) then
       Ig.Say "LIBRARY > MODELS: NO BUILDING TOOL (Tools/v3d_buildings.livecodescript) AND NO 2008 DATA"
@@ -509,6 +843,21 @@ on Ig.GenLibrary
    repeat for each item tN in Bld.Names("Houses")
       put "Houses/" & tN & cr after tOut
    end repeat
+   Ig.UseTool "v3d_props"
+   Ig.UseTool "v3d_figures"
+   put "A SHOWCASE OF EVERY MODEL" & cr after tOut
+   if "v3d_props" is among the lines of the stacksInUse then
+      repeat for each item tG in Prop.Groups()
+         repeat for each item tN in Prop.Names(tG)
+            put tG & "/" & tN & cr after tOut
+         end repeat
+      end repeat
+   end if
+   if "v3d_figures" is among the lines of the stacksInUse then
+      repeat for each item tN in Fig.Roles()
+         put "Characters/" & tN & cr after tOut
+      end repeat
+   end if
    delete the last char of tOut
    put tOut into sLibList
    Ig.ShowLibrary
@@ -569,6 +918,7 @@ function Ig.SpawnBuilding pName, pX, pZ, pTurn, pReplace
    put tPN into sBld[tN]["parts"]
    put tKey into sSelected
    put tKey & cr after sMade
+   put "building|" & pName & "|" & pX & "|" & pZ & "|" & pTurn into sObj[tKey]
    Ig.Say "BUILDING" && toUpper(pName) & ":" && toUpper(tB["kind"]) & "," && tB["storeys"] && "STOREYS," && round(tB["w"]) & "x" & round(tB["d"]) && "M," && tPN && "DOORS AND WINDOWS (EDIT > BOOM BREAKS THEM)"
    return tN
 end Ig.SpawnBuilding
@@ -669,6 +1019,7 @@ on Ig.Kill pKey
       put empty into sBld[tN]["shell"]
       delete variable sBldOf[pKey]
    end if
+   delete variable sObj[pKey]
    Entity.Kill pKey
 end Ig.Kill
 

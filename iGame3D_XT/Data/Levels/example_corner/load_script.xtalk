@@ -1,0 +1,19 @@
+-- iGame3D XT level: example_corner. Written by hand, to show the format: edit it in any text
+-- editor (or ask your AI to), then Library > Levels > example_corner. One Lvl. command a line.
+-- Lvl.Object kind, name, x, z, turn [, a character's name]   (metres from the middle; -z is
+-- toward the camera; a building's turn is true to face +z, a prop's is in radians)
+Lvl.Camera 0, -260, -520
+Lvl.Scene "background", "0,0,0"
+Lvl.Light 1, "position", "-0.5,2,-1"
+Lvl.Object "building", "home_1", -14, 8, false
+Lvl.Object "building", "shop_2", 2, 9, false
+Lvl.Object "building", "house02", 16, 8, false
+Lvl.Object "prop", "road", 0, -3, 1.5708
+Lvl.Object "prop", "lamp_post", -6, -8, 0
+Lvl.Object "prop", "tree", 9, -9, 0
+Lvl.Object "prop", "car", -3, -3, 1.5708
+Lvl.Object "prop", "crate", 6, -8, 0
+Lvl.Object "figure", "civilian", -1, -8, 0, "civilian_001"
+Lvl.Object "figure", "police", 2, -7, 0, "police_001"
+Lvl.Object "figure", "zombie", 12, -2, 0, "zombie_001"
+Lvl.Say "EXAMPLE CORNER: THREE BUILDINGS, A ROAD, A CAR, A TREE, AND THREE PEOPLE (ONE OF THEM DEAD)"

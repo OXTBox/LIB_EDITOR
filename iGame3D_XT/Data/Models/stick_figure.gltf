@@ -1,0 +1,78 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "iGame3D XT stick_gltf.py"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "name": "civilian_001",
+   "mesh": 0
+  }
+ ],
+ "meshes": [
+  {
+   "name": "stick_figure",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0
+     },
+     "indices": 1,
+     "mode": 1
+    }
+   ]
+  }
+ ],
+ "buffers": [
+  {
+   "byteLength": 520,
+   "uri": "data:application/octet-stream;base64,j8L1vQAAAAAAAAAAzczMvQAAAD8AAAAAzczMvTMzcz8AAAAAj8L1PQAAAAAAAAAAzczMPQAAAD8AAAAAzczMPTMzcz8AAAAAAAAAADMzcz8AAAAAAAAAAAAAwD8AAAAArkdhvo/CtT8AAAAArkdhPo/CtT8AAAAAKVyPvilcjz8AAAAAKVyPvpqZWT8AAAAAKVyPPilcjz8AAAAAKVyPPpqZWT8AAAAAj8L1PSlczz8AAAAAXdzGPU5i2D8AAAAAK/YXPf323T8AAAAAK/YXvf323T8AAAAAXdzGvU5i2D8AAAAAj8L1vSlczz8AAAAAXdzGvQRWxj8AAAAAK/YXvVXBwD8AAAAAK/YXPVXBwD8AAAAAXdzGPQRWxj8AAAAAAAAAAFK43j8AAAAAAAAAAO/J2z9OYpA9AAAAANob1D9Drek9AAAAAHicyj9Drek9AAAAAGPuwj9OYpA9AAAAAGPuwj9OYpC9AAAAAHicyj9Drem9AAAAANob1D9Drem9AAAAAO/J2z9OYpC9AAABAAEAAgADAAQABAAFAAIABQAGAAcACAAJAAgACgAKAAsACQAMAAwADQAOAA8ADwAQABAAEQARABIAEgATABMAFAAUABUAFQAWABYAFwAXAA4AGAAZABkAGgAaABsAGwAcABwABwAHAB0AHQAeAB4AHwAfACAAIAAYAA=="
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 396,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 396,
+   "byteLength": 124,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 33,
+   "type": "VEC3",
+   "min": [
+    -0.28,
+    0,
+    -0.1141
+   ],
+   "max": [
+    0.28,
+    1.74,
+    0.1141
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5123,
+   "count": 62,
+   "type": "SCALAR"
+  }
+ ]
+}
