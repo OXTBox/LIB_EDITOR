@@ -83,7 +83,7 @@ Known gaps found while writing this (each is a step below):
 - The editor script's last fallback for a tool window is still `LIB_ig3d/livecode/` (step C5).
 - **Help > iGame3D Help opens only the 2008 pages**, which describe the 2008 Lua engine. There
   is no page for iGame3D XT itself (steps D2-D4).
-- The 2008 Help links to igame3d.com, igame3d.de and a SourceForge address 79 times; those may
+- The 2008 Help links to igame3d.com, igame3d.de and a SourceForge address about 80 times; those may
   be dead (step D3).
 - There is **no About box, no version number, no licence or credits file** in the folder (B, G).
 - `README.md` beside this file still describes two branches; since the merge of 16 Nov main
@@ -119,7 +119,7 @@ only, always reviewed). "Blocks" = the release cannot go out without it.
 | B3 | `CREDITS.txt`: approve the names and spellings (draft in section 6) | owner approves, AI writes | the file is in the zip; the About box shows the same text | yes |
 | B4 | `SOURCE.txt`: where the source is. Ours: the scripts in the zip are the source, readable and editable. The engine's: the address of its public source (owner or AI copies it from the engine's About/README; do not guess it) | AI, owner confirms the address | the file is in the zip and the address opens | yes |
 | B5 | An About box in the editor (LIB_ALPHA rule 17): long date, name, title, version, what it is for, how to use it, how to report a problem, credits, licence | AI | Help > About iGame3D XT shows it; a test reads its text | yes |
-| B6 | The Tell box (` or F2) writes the player's notes into their own Data folder; say so in the About box and on the page (it sends nothing anywhere) | AI | the sentence is in both | no |
+| B6 | The Tell box (` or F2) writes the player's notes into their own Data folder; say so in the About box and on the page (it sends nothing anywhere). First check that the Tell box opens in the editor as it does in the games (not tested for XT) | AI | a test opens it in the editor; the sentence is in both | no |
 
 ### C. The standalone build
 
@@ -141,7 +141,7 @@ only, always reviewed). "Blocks" = the release cannot go out without it.
 |---|---|---|---|---|
 | D1 | Walk every menu and tool on a screen; mark each: works / not in 1.0 / remove | owner | a marked list (the AI prints the menu tree from `kMenus` and `kTools` for you to mark) | yes |
 | D2 | Write **iGame3D XT Help**, one page per menu, from the script's own header and D1: the first five minutes; Library (Models, Text, Levels, Set Data Folder); Edit (boom, Replace With Model); Window (Inspector); levels as editable xTalk files (`Data/Scripts/LEVEL_API.txt`); the Tell box | Spark drafts from the script, AI checks every sentence against the script, owner reads | every menu item named in the Help exists in `kMenus`, and every item in `kMenus` is in the Help (a test compares the two lists) | yes |
-| D3 | Mark the 2008 pages as legacy: a line at the top of `Help_2008/index.html` ("the 2008 engine's help, kept as it was; iGame3D XT's own help is ..."), and a note that its web links (igame3d.com, igame3d.de, SourceForge, 79 in all) may no longer work. The pages themselves are not edited | AI | the line is there; the owner's 2008 text is unchanged below it | yes |
+| D3 | Mark the 2008 pages as legacy: a line at the top of `Help_2008/index.html` ("the 2008 engine's help, kept as it was; iGame3D XT's own help is ..."), and a note that its web links (igame3d.com, igame3d.de, SourceForge, about 80 in all) may no longer work. The pages themselves are not edited | AI | the line is there; the owner's 2008 text is unchanged below it | yes |
 | D4 | Help menu: "iGame3D XT Help" first, "iGame3D 2008 Help (legacy)" second, "About iGame3D XT" | AI | t37 extended: the three items exist and open their files | yes |
 | D5 | The 2008 FAQ pages were exported with a third-party tool and carry its banner ("The Scripter's Scrapbook", FlexibleLearning.com): keep as is, or leave the FAQ out | owner | a yes or no here | no |
 
@@ -199,7 +199,7 @@ only the owner's to state, the cell says so; nobody else fills it in.
 |---|---|---|---|---|
 | The editor | `Vibecode3D_Play_Ig3dEditor.livecodescript` | 96 KB | ours (2026), remade from the owner's 2007 main window by structure only | ours; published under the GPL v3 with the build |
 | Tools | `Tools/v3d_buildings`, `v3d_props`, `v3d_figures`, `v3d_inspector`, `v3d_models`, `v3d_skins` | 7 scripts, 148 KB with the next row | ours (2026) | ours, GPL v3 |
-| Shaped windows | `Tools/window_shape` | | ours (2026); the idea credited to Scott Rossi's WindowLab. Written new around one built-in property, not copied | ours, GPL v3; **owner to confirm the credit line** |
+| Shaped windows | `Tools/window_shape` | | ours (2026); the idea credited to Scott Rossi's WindowLab. Written by an AI model around one built-in property | ours, GPL v3; **owner to confirm the credit line, and that nothing of WindowLab's own code is in it** (an AI can compare the two first) |
 | Buildings, houses | none stored: 51 names, made when asked | 0 | generated (`Tools/v3d_buildings`), sizes from each name | ours |
 | Props | none stored: 123 plain names in 17 groups | 0 | generated (`Tools/v3d_props`) | ours |
 | Characters | none stored: 14 roles, our stick figure | 0 | generated (`Tools/v3d_figures`) | ours |
@@ -207,7 +207,7 @@ only the owner's to state, the cell says so; nobody else fills it in.
 | Aquarius character set | `Data/Text/Aquarius.pbm` (16.7 KB) and the same bitmap inside the editor script | | the owner's 2008 converter script (glyphs 1-255), glyph 0 from LIB_BIT's font | **owner to state the origin of the glyph shapes** (step A5) |
 | Levels | `Data/Levels/aquarius`, `example_corner`, `showcase`, `streets` (`load_script.xtalk` each) | | ours (2026) | ours, GPL v3 |
 | Level commands | `Data/Scripts/LEVEL_API.txt`, `Data/README.txt` | | ours (2026) | ours |
-| 2008 Help | `Help_2008/`: 18 files (html and txt; no pictures) | 480 KB | the iGame3D team's 2008 help, brought back from the earlier edition | **owner to state** (step A4) |
+| 2008 Help | `Help_2008/`: 17 files (html and txt; no pictures) | 480 KB | the iGame3D team's 2008 help, brought back from the earlier edition | **owner to state** (step A4) |
 | The program | `iGame3D XT.exe` and what the build puts beside it | about 16 MB | built with OXT-Beyond | GPL v3, with the engine's own notice files (step B2) |
 | Engine scripts | the three scripts the Library loads to play a title (`vibe_engine_xt3d`, `game_player`, `GameNotes`) | 336 KB | ours | ours, GPL v3 |
 | Motion clips | none in XT alone | 0 | | Animazoo and Carnegie Mellon credited if any are added (step A6) |
@@ -233,7 +233,7 @@ iGame3D XT 1.0.0
 
 Made by xAction.                       [your name here, as you want it written]
 
-iGame3D began in 2002. Its 2008 edition was made by the iGame3D team;
+iGame3D's 2008 edition was made by the iGame3D team;   [the year it began: yours to add]
 the Help pages under "iGame3D 2008 Help" are theirs, kept as they were.
                                         [names, if you want them listed]
 
@@ -247,7 +247,7 @@ Motion capture, where used: Animazoo; the Carnegie Mellon University
 Motion Capture Database.               [only if clips ship]
 
 Buildings, props, characters and the Aquarius letters are generated
-by the program from their names. No model files were harmed.
+by the program from their names.
 Built with AI models as co-workers.     [keep or cut]
 ```
 
@@ -256,11 +256,11 @@ Built with AI models as co-workers.     [keep or cut]
 **iGame3D XT**
 *A 3D game editor that draws in vector lines, written in xTalk, the language of HyperCard.*
 
-iGame3D started in 2002 as a place where all the tools you need are in one window and
-everything is a file you can open. iGame3D XT is that idea rebuilt from nothing: a small editor
+iGame3D [since the year you give] was a place where all the tools you need are in one window
+and everything is a file you can open. iGame3D XT is that idea rebuilt from nothing: a small editor
 that makes its whole world from names. Type "warehouse" and get a warehouse, with windows where
-a warehouse has them and doors that break. Ask for a street and get four. The whole download is
-smaller than a single photograph of the old one.
+a warehouse has them and doors that break. Ask for a street and get four. The editor's own
+files come to under 1 MB.
 
 - **Made from names, not model files.** 51 buildings and houses, 123 props, 14 kinds of
   character, and a 256-character alphabet built from one tiny bitmap you can repaint.
@@ -276,7 +276,7 @@ What it is not, yet: there are no particles, shaders or sound in 1.0, and some o
 tools in the toolbar only say what they will do. This is the first of four editions; xRay,
 Box2DXT and xRayBox follow.
 
-Windows 10 or 11, 64-bit. Unzip the whole folder first ("Extract all"), then run
+Windows, 64-bit [which versions: written down after step E6]. Unzip the whole folder first ("Extract all"), then run
 `iGame3D XT.exe`. Windows may say it protected your PC, because the program is not signed:
 choose "More info", then "Run anyway".
 
