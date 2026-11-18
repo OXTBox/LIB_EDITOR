@@ -30,8 +30,7 @@
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
 ######################################################################################
 
-global gObjectTransforms, gSceneObjects
-global gCameraYaw, gCameraPitch
+global gObjectTransforms
 global bPaused, bPlaying
 
 local sLib, sLibRoot, sLibList, sMade, sSelected, sColorN, sOrbit, sTicks, sCamX, sCamY, sCamZ, sMsgUntil, sLight
@@ -50,7 +49,7 @@ on Game.OnStart
    local tKeep
    focus on nothing          -- arrow keys belong to the game, never to a menu or a field
    Ig.Wake
-   Engine.ResetCamera
+   Camera.Reset
    Scene.ClearAll
    Particles.Clear
    HUD.Clear
@@ -64,7 +63,7 @@ on Game.OnStart
    put -160 into sCamY
    put -520 into sCamZ
    Ig.Camera
-   Mesh.Define "Ig.Floor", MeshGrid(16, 16, 50)
+   Mesh.Define "Ig.Floor", Mesh.Grid(16, 16, 50)
    get Entity.Spawn("Ig.Floor", 0, 0, 0, "#0A280A")
    -- the axes: x red, z blue, up green
    Mesh.Define "Ig.Axes", Ig.AxesMesh()
@@ -80,9 +79,8 @@ on Game.OnStart
 end Game.OnStart
 
 on Ig.Camera
-   Engine.SetCam -sCamX, -sCamY, -sCamZ
-   put atan2(-sCamX, -sCamZ) into gCameraYaw
-   put -atan2(-sCamY, sqrt(sCamX ^ 2 + sCamZ ^ 2)) into gCameraPitch
+   Camera.SetPosition sCamX, sCamY, sCamZ
+   Camera.SetLook atan2(-sCamX, -sCamZ), -atan2(-sCamY, sqrt(sCamX ^ 2 + sCamZ ^ 2))
 end Ig.Camera
 
 -------------------------------------------------------------------- the toolbar
@@ -455,7 +453,7 @@ on Ig.Menu pMenu, pItem
             if Ig.BreakBuilding(sBldOf[sSelected]) > 0 then break
          end if
          if sSelected is not empty then
-            FX.Sparks GetObjectPosition(sSelected, "x"), GetObjectPosition(sSelected, "y"), GetObjectPosition(sSelected, "z"), 30, "#FFB000"
+            FX.Sparks Entity.GetPosition(sSelected, "x"), Entity.GetPosition(sSelected, "y"), Entity.GetPosition(sSelected, "z"), 30, "#FFB000"
             Ig.Menu "Edit", "Undo"
             Ig.Say "BOOM"
          end if
@@ -463,7 +461,7 @@ on Ig.Menu pMenu, pItem
       case "Edit/boom all"
          if Ig.BreakAll() > 0 then break
          repeat for each line tKey in sMade
-            FX.Sparks GetObjectPosition(tKey, "x"), GetObjectPosition(tKey, "y"), GetObjectPosition(tKey, "z"), 20, "#FFB000"
+            FX.Sparks Entity.GetPosition(tKey, "x"), Entity.GetPosition(tKey, "y"), Entity.GetPosition(tKey, "z"), 20, "#FFB000"
             Ig.Kill tKey
          end repeat
          put empty into sMade
@@ -540,8 +538,8 @@ on Ig.Menu pMenu, pItem
          break
       case "Mesh/Focus Mesh"
          if sSelected is not empty then
-            put GetObjectPosition(sSelected, "x") into sCamX
-            put GetObjectPosition(sSelected, "z") - 260 into sCamZ
+            put Entity.GetPosition(sSelected, "x") into sCamX
+            put Entity.GetPosition(sSelected, "z") - 260 into sCamZ
             put -120 into sCamY
             put false into sOrbit
             Ig.Say "FOCUSED ON THE LAST OBJECT"
@@ -895,7 +893,7 @@ on Ig.PlaceAtMouse pLine
    put empty into tXZ
    if sLib["mouse"] is not empty then
       try
-         put Engine.ScreenToFloor(item 1 of sLib["mouse"], item 2 of sLib["mouse"], 0) into tXZ
+         put Camera.ScreenToFloor(item 1 of sLib["mouse"], item 2 of sLib["mouse"], 0) into tXZ
       catch tErr
          put empty into tXZ
       end try
@@ -955,7 +953,7 @@ on Ig.PreviewDrag
       exit Ig.PreviewDrag
    end if
    try
-      put Engine.ScreenToFloor(tX, tY, 0) into tXZ
+      put Camera.ScreenToFloor(tX, tY, 0) into tXZ
    catch tWhere
       put empty into tXZ
    end try
@@ -1290,7 +1288,7 @@ function Ig.SpawnThing pKind, pName, pX, pZ, pRot, pReplace, pInst
       filter lines of sMade without sSelected
    end if
    put Entity.Spawn(tMesh, pX * 10, 0, pZ * 10, tColor) into tKey
-   if pRot is not 0 then SetObjectRotation tKey, 0, pRot, 0
+   if pRot is not 0 then Entity.SetRotation tKey, 0, pRot, 0
    put pKind & "|" & pName & "|" & pX & "|" & pZ & "|" & pRot & "|" & pInst into sObj[tKey]
    put tKey into sSelected
    put tKey & cr after sMade
@@ -1564,7 +1562,7 @@ function Ig.SpawnBuilding pName, pX, pZ, pTurn, pReplace
          put "#7CFF7C" into tColor
    end switch
    put Entity.Spawn("Bld." & pName, pX * Bld.UnitsPerMetre(), 0, pZ * Bld.UnitsPerMetre(), tColor) into tKey
-   if pTurn then SetObjectRotation tKey, 0, 3.14159, 0
+   if pTurn then Entity.SetRotation tKey, 0, 3.14159, 0
    add 1 to sBldN
    put sBldN into tN
    put pName into sBld[tN]["name"]
@@ -2049,26 +2047,26 @@ on Ig.Tool pName
    put (random(7) - 4) * 50 into z
    switch pName
       case "sphere"
-         Ig.Make "Ig.Sphere", MeshSphere(30, 4, 8), x, z
+         Ig.Make "Ig.Sphere", Mesh.Sphere(30, 4, 8), x, z
          break
       case "cone"
-         Ig.Make "Ig.Cone", MeshPyramid(8, 30, 60), x, z
+         Ig.Make "Ig.Cone", Mesh.Pyramid(8, 30, 60), x, z
          break
       case "cylinder"
-         Ig.Make "Ig.Cylinder", MeshPrism(8, 28, 60), x, z
+         Ig.Make "Ig.Cylinder", Mesh.Prism(8, 28, 60), x, z
          break
       case "cube"
-         Ig.Make "Ig.Cube", MeshBox(50, 50, 50), x, z
+         Ig.Make "Ig.Cube", Mesh.Box(50, 50, 50), x, z
          break
       case "quad"
-         Ig.Make "Ig.Quad", MeshBox(80, 2, 80), x, z
+         Ig.Make "Ig.Quad", Mesh.Box(80, 2, 80), x, z
          break
       case "Terrain"
-         Ig.Make "Ig.Terrain", MeshGrid(6, 6, 30), x, z
+         Ig.Make "Ig.Terrain", Mesh.Grid(6, 6, 30), x, z
          break
       case "dropMesh"
          if sSelected is not empty then
-            SetObjectPosition sSelected, GetObjectPosition(sSelected, "x"), -15, GetObjectPosition(sSelected, "z")
+            Entity.SetPosition sSelected, Entity.GetPosition(sSelected, "x"), -15, Entity.GetPosition(sSelected, "z")
             Ig.Say "DROPPED THE LAST OBJECT TO THE FLOOR"
          end if
          break
@@ -2092,7 +2090,7 @@ on Ig.Tool pName
          break
       case "light"
          if sLight is not empty then Entity.Kill sLight
-         Mesh.Define "Ig.Light", MeshPyramid(4, 10, 20)
+         Mesh.Define "Ig.Light", Mesh.Pyramid(4, 10, 20)
          put Entity.Spawn("Ig.Light", x, -200, z, "#FFE060") into sLight
          Ig.Say "A LIGHT MARKER PLACED (VIBECODE3D DRAWS LINES: NO LIGHTING YET)"
          break
@@ -2118,9 +2116,9 @@ end Ig.NextColor
 on Ig.Recolor
    local tMesh, x, y, z
    put gObjectTransforms[sSelected]["mesh"] into tMesh
-   put GetObjectPosition(sSelected, "x") into x
-   put GetObjectPosition(sSelected, "y") into y
-   put GetObjectPosition(sSelected, "z") into z
+   put Entity.GetPosition(sSelected, "x") into x
+   put Entity.GetPosition(sSelected, "y") into y
+   put Entity.GetPosition(sSelected, "z") into z
    Entity.Kill sSelected
    put Entity.Spawn(tMesh, x, y, z, Ig.NextColor()) into sSelected
    put sSelected & cr after sMade
