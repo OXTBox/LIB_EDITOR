@@ -50,6 +50,34 @@ constant kTools = "level|2699|console.png|editing mode|Level settings;snapshot|2
 
 constant kMenus = "File=New Level/N;Open Level.../O;Save Level/S;-;Clear Level;-;Mesh;~Save In Level;~Export;~Clear;-;Close Window/W#Edit=Undo/Z;-;(Cut/X;(Copy/C;(Paste/V;(Select All/A;-;Replace With Model...;-;Boom;Boom All#View=Toolbar At Top;Toolbar At Bottom;Toolbar At Left;Toolbar At Right;-;Hide Tools;Show Tools;-;Frame Rate;~15 fps;~30 fps;~60 fps;-;Show Library;Hide Library#Library=Models;Levels;Text;-;Emitters;Images;Materials;Scripts;Sounds;-;Set Data Folder...#Mesh=Focus Mesh/0;Goto Points;Tag Vertices/T;Duplicate Vertices/D;Extrude/E;Select;~All Vertices;~Connected/g;~Invert/i;~Attached To Bone;Face;~Face In/[;~Face Out/];~Invert Faces/*;View;~Hide/h;~Hide Other/f;~Hide All;~Show All/u;Mirror;~X;~Y;~Z;~Double Side;-;Combine Overlaps;Subdivide;-;Delete Vertices#Dev=SAVE;-;Edit F1Script;Edit SGScript;Edit RLScript;StackScript;-;Xternals;-;stopIdle;-;pointer tool/m;-;FindT3D/3;-;scriptHarvester;OpenStacks;CustomPropLengths;RevFunctions;Harvest;-;resetiGame3D;BackUp#Window=Window Snapping;Mode;~Level;~Model;-;Animation Editor;Console;ig3dWTFEDITOR;Inspector;Level Collect;Library;Scene Graph;Snapshot#Help=iGame3D Help/?;Referencer;Script Commands"
 constant kInk = "#7CFF7C"
+constant kPaper = "#061006"
+
+-- the owner's rule (18 Nov): colour the template BEFORE create, so nothing new is ever born in the
+-- stack's colours (a menu's dropdown takes its button's colours: ink on white was "extreme green")
+on Ig.Template pKind
+   switch pKind
+      case "group"
+         reset the templateGroup
+         break
+      case "graphic"
+         reset the templateGraphic
+         set the foregroundColor of the templateGraphic to kInk
+         set the backgroundColor of the templateGraphic to kPaper
+         break
+      case "button"
+         reset the templateButton
+         set the textColor of the templateButton to kInk
+         set the backgroundColor of the templateButton to kPaper
+         set the borderColor of the templateButton to "#1C4A2A"
+         break
+      case "field"
+         reset the templateField
+         set the textColor of the templateField to kInk
+         set the backgroundColor of the templateField to kPaper
+         set the borderColor of the templateField to "#1C4A2A"
+         break
+   end switch
+end Ig.Template
 
 on Game.OnStart
    local tKeep
@@ -96,12 +124,12 @@ on Ig.BuildToolbar
    local tTool, n, x, tName, tGroup
    lock screen
    if there is not a group "Ig3dTools" of this card then
-      reset the templateGroup
+      Ig.Template "group"
       create group "Ig3dTools"
       set the lockLoc of group "Ig3dTools" to true
       set the rect of group "Ig3dTools" to the rect of this card
       -- the menu bar's strip first, so it lies under everything else in the group
-      reset the templateGraphic
+      Ig.Template "graphic"
       create graphic "Ig3dMenuBar" in group "Ig3dTools"
    end if
    set the visible of group "Ig3dTools" to true
@@ -117,7 +145,7 @@ on Ig.BuildToolbar
       add 1 to n
       put item 1 of tTool into tName
       if there is not a button tName of group id tGroup then
-         reset the templateButton
+         Ig.Template "button"
          create button tName in group id tGroup
       end if
       set the label of button tName of group id tGroup to numToCodepoint(baseConvert(item 2 of tTool, 16, 10))
@@ -152,7 +180,7 @@ on Ig.BuildMenus
       if tName is "View" then put Ig.TickView(tText) into tText
       if tName is "Library" and sLibMenu["on"] is true and sLibMenu["text"] is not empty then put sLibMenu["text"] into tText
       if there is not a button ("menu_" & tName) of group id tGroup then
-         reset the templateButton
+         Ig.Template "button"
          create button ("menu_" & tName) in group id tGroup
       end if
       set the style of button ("menu_" & tName) of group id tGroup to "menu"
@@ -160,6 +188,7 @@ on Ig.BuildMenus
       set the label of button ("menu_" & tName) of group id tGroup to tName
       set the text of button ("menu_" & tName) of group id tGroup to tText
       set the textColor of button ("menu_" & tName) of group id tGroup to kInk
+      set the backgroundColor of button ("menu_" & tName) of group id tGroup to kPaper   -- the dropdown: ink on dark, never ink on white
       set the showBorder of button ("menu_" & tName) of group id tGroup to false
       set the opaque of button ("menu_" & tName) of group id tGroup to false
       set the traversalOn of button ("menu_" & tName) of group id tGroup to false
@@ -276,7 +305,7 @@ on Ig.Layout
    set the rect of group id tG to the rect of this card
    -- the menu bar: a strip across the top, the titles on it
    if there is not a graphic "Ig3dMenuBar" of group id tG then
-      reset the templateGraphic
+      Ig.Template "graphic"
       create graphic "Ig3dMenuBar" in group id tG
    end if
    if the style of graphic "Ig3dMenuBar" of group id tG is not "rectangle" then
@@ -296,7 +325,7 @@ on Ig.Layout
    end repeat
    -- the tools: ]< (or ]>) first, then the buttons, in rows or columns along one side
    if there is not a button "Ig3dToolsTab" of group id tG then
-      reset the templateButton
+      Ig.Template "button"
       create button "Ig3dToolsTab" in group id tG
       set the textSize of button "Ig3dToolsTab" of group id tG to 12
       set the textStyle of button "Ig3dToolsTab" of group id tG to "bold"
@@ -835,7 +864,7 @@ on Ig.ShowLibrary
    local tGroup, tN
    put the short id of group "Ig3dTools" into tGroup
    if there is not a field "Ig3dLibrary" of group id tGroup then
-      reset the templateField
+      Ig.Template "field"
       create field "Ig3dLibrary" in group id tGroup
       set the listBehavior of field "Ig3dLibrary" of group id tGroup to true
       set the lockText of field "Ig3dLibrary" of group id tGroup to true
@@ -851,7 +880,7 @@ on Ig.ShowLibrary
    -- the preview: a box, and the model's wire in it; pressing on it drags the model out
    repeat for each item tN in "Ig3dPreview,Ig3dPreviewWire"
       if there is not a graphic tN of group id tGroup then
-         reset the templateGraphic
+         Ig.Template "graphic"
          create graphic tN in group id tGroup
          set the script of graphic tN of group id tGroup to "on mouseDown" & cr & "   Ig.PreviewDrag" & cr & "end mouseDown"
       end if
@@ -865,7 +894,7 @@ on Ig.ShowLibrary
    set the foregroundColor of graphic "Ig3dPreviewWire" of group id tGroup to kInk
    -- a little X above the preview's top right corner closes the Library
    if there is not a button "Ig3dLibraryClose" of group id tGroup then
-      reset the templateButton
+      Ig.Template "button"
       create button "Ig3dLibraryClose" in group id tGroup
       set the label of button "Ig3dLibraryClose" of group id tGroup to "X"
       set the textSize of button "Ig3dLibraryClose" of group id tGroup to 11
