@@ -10,6 +10,10 @@ cards_yard.cellmap   a west room and an east room (version 2): the @ start, two 
 cards_broken.cellmap a map with a problem of every kind the checker (E12) knows that needs no start.
 cards_lost.cellmap   E12's second broken map: it has a start, so a sealed room shows as unreachable;
                      a one-way teleporter and a teleporter tile (T) with no link.
+cards_lower.cellmap  E14's ground floor: walls 250 high, a sloped ramp along the south wall rising
+                     30 hu a cell from 1 to 121, and a [stack] line laying cards_upper over it at 120.
+cards_upper.cellmap  E14's loft: a deck at base 120 (its ground 121), a hole over the ramp, the goal
+                     (X) in the far corner. Its walls are the ground floor's, which stand through it.
 Written through LIB_BIT/editor/python/cellmap.py, so the files are exactly what the libraries write.
 """
 import os, sys
@@ -120,10 +124,51 @@ def lost():
     return m
 
 
+LOWER = [
+    '##########',
+    '#.@......#',
+    '#........#',
+    '#........#',
+    '#........#',
+    '#........#',
+    '##########',
+]
+
+
+def lower():
+    m = build(LOWER, 'cards_lower')
+    for r in range(7):
+        for c in range(10):
+            if LOWER[r][c] == '#':
+                m['floor'][r][c] = 250            # through both storeys
+    m['meta']['version'] = 3
+    m['slope'] = {}
+    for i, c in enumerate((2, 3, 4, 5)):        # cols 3-6 of row 6: a ramp rising east, 30 hu a cell
+        m['floor'][5][c] = 1 + 30 * i
+        m['slope'][(5, c)] = [0, 30, 30, 0]       # nw ne se sw
+    m['stack'] = [dict(file='cards_upper.cellmap', base=120, at='1,1')]
+    return m
+
+
+def upper():
+    m = cm.new_map2(10, 7, name='cards_upper', wallH=62)
+    for r in range(7):
+        for c in range(10):
+            deck = LOWER[r][c] != '#' and not (r == 5 and 2 <= c <= 5)
+            ch = '.' if deck else ' '
+            if (r, c) == (1, 8):
+                ch = 'X'
+            m['tags'][r][c] = ch
+            m['design'][r][c] = ord(ch)
+            m['floor'][r][c] = 1 if deck else 0
+    m['meta']['base'] = 120
+    return m
+
+
 if __name__ == '__main__':
     out = os.path.join(HERE, '..', 'maps')
     os.makedirs(out, exist_ok=True)
-    for m in (yard(), broken(), lost()):
+    for m in (yard(), broken(), lost(), lower(), upper()):
         p = os.path.join(out, m['meta']['name'] + '.cellmap')
         cm.write_map(m, p)
         print('wrote', os.path.relpath(p, os.path.join(HERE, '..')))

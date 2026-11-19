@@ -1,0 +1,44 @@
+# cellmap 2 - LIB_BIT/editor (format: editor/CELLMAP_V2.md)
+[map]
+name	cards_upper
+cols	10
+rows	7
+cell	76
+wallH	62
+unitPx	16
+font	Aquarius
+tags	tags_default
+version	2
+base	120
+[design]
+          
+ .......X 
+ ........ 
+ ........ 
+ ........ 
+ .    ... 
+          
+[tags]
+          
+ .......X 
+ ........ 
+ ........ 
+ ........ 
+ .    ... 
+          
+[floor]
+  0   0   0   0   0   0   0   0   0   0
+  0   1   1   1   1   1   1   1   1   0
+  0   1   1   1   1   1   1   1   1   0
+  0   1   1   1   1   1   1   1   1   0
+  0   1   1   1   1   1   1   1   1   0
+  0   1   0   0   0   0   1   1   1   0
+  0   0   0   0   0   0   0   0   0   0
+[ceiling]
+  0   0   0   0   0   0   0   0   0   0
+  0   0   0   0   0   0   0   0   0   0
+  0   0   0   0   0   0   0   0   0   0
+  0   0   0   0   0   0   0   0   0   0
+  0   0   0   0   0   0   0   0   0   0
+  0   0   0   0   0   0   0   0   0   0
+  0   0   0   0   0   0   0   0   0   0

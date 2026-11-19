@@ -30,6 +30,7 @@ The owner's brief (About_Lib_editor.txt, 2026-11-14):
 | E11 Camera squares | squares cut to a fixed, a watching or a flyby camera; elsewhere a follow camera | `tests/e11_headless.txt` |
 | E12 The checker | lists a map's problems, N jumps the camera to each; M next map | `tests/e12_headless.txt` |
 | E13 Walk the map | the whole map as a level, walked | `tests/e13_headless.txt` |
+| E14 Stacked maps | a loft over a ground floor: up a ramp, onto its deck, down its hole | `tests/e14_headless.txt` |
 | E15 Undo | Q / A raise or lower a cell; U undoes, R redoes, all the way back | `tests/e15_headless.txt` |
 
 The `.txt` tests run with no window:

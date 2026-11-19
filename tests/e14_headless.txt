@@ -1,0 +1,90 @@
+-- E14 Stacked Maps with no window: cards_lower with cards_upper stacked on it at base 120 (one
+-- place, two maps); up the ramp along the south wall onto the loft, to the goal, and down the hole.
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e14_headless.txt
+local tState
+put ck("E14 compiles", cardOpen("E14_StackedMaps.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E14") into tState
+put ck("start on the @ of the ground floor; the [stack] line made a place of two maps", tState, "3,2|cards_lower|y 1|start|maps 2|") & return after tLog
+get cardDo("E14.TestPlace", 2, 6, 1)
+put ckStart("at the foot of the ramp, under the loft", cardFn("E14.State"), "2,6|cards_lower|y 1|") & return after tLog
+put ck("east: up the ramp", cardRun("E14", "100", 30), "3,6|cards_lower|y 22|path|maps 2|") & return after tLog
+put ck("  still climbing, under the hole", cardRun("E14", "100", 45), "5,6|cards_lower|y 75|path|maps 2|") & return after tLog
+put ck("  off the top onto the loft's deck (121 hu)", cardRun("E14", "100", 45), "7,6|stack1|y 121|path|maps 2|") & return after tLog
+put ck("north across the loft, over the ground floor's air", cardRun("E14", "119", 120), "7,2|stack1|y 121|path|maps 2|") & return after tLog
+put ck("east to the goal in the loft's corner", cardRun("E14", "100", 60), "9,2|stack1|y 121|goal|maps 2|") & return after tLog
+get cardDo("E14.TestPlace", 5, 5, 200)
+put ckStart("on the loft beside the hole", cardFn("E14.State"), "5,5|stack1|y 121|") & return after tLog
+put ck("south into the hole: down onto the ramp below", cardRun("E14", "115", 30), "5,6|cards_lower|y 76|path|maps 2|") & return after tLog
+get cardDo("E14.TestPlace", 5, 5, 1)
+put ckStart("the same cell on the ground floor, under the loft", cardFn("E14.State"), "5,5|cards_lower|y 1|") & return after tLog
+put ck("south from under the loft: the ramp's side is too high to step on", cardRun("E14", "115", 30), "5,5|cards_lower|y 1|path|maps 2|") & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas

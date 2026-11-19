@@ -89,7 +89,7 @@ an editor GUI (BitEditor, or a separate tool where the data is different, like A
 | E11 | Camera squares (DONE 18 Nov: `examples/E11_CameraSquares`, `tests/e11_headless.txt`, 13 checks; fixed, target and flyby from the yard's camera lines) | cameras from data | TRLE cameras |
 | E12 | The checker: list problems, jump to each (DONE 18 Nov: `examples/E12_Checker`, `tests/e12_headless.txt`, 15 checks; maps `cards_broken` + `cards_lost`) | validation | Forge errors, TRLE finders |
 | E13 | Walk the map with Amazing Couple's hero (DONE 2026-11-14: a version 2 cellmap as a level, `CellMap.LevelSegments` + `CellMap.Walk`; `tests/e13_test.sh`) | preview | Forge visual mode, TRLE preview |
-| E14 | Stacked maps: a room above a room | base heights | TRLE stacked rooms |
+| E14 | Stacked maps: a room above a room (DONE 18 Nov: `examples/E14_StackedMaps`, `tests/e14_headless.txt`, 12 checks; `cards_lower` + `cards_upper` joined by a [stack] line) | base heights | TRLE stacked rooms |
 | E15 | Undo (DONE 18 Nov: `examples/E15_Undo`, `tests/e15_headless.txt`, 13 checks; a stack of changes, not copies) | an undo stack | both |
 
 ## 5. Then the GUIs
