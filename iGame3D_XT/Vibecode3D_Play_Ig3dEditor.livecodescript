@@ -33,7 +33,7 @@
 ##   on a folder shows it in the Library list; only "Explore here..." opens Explorer. Without
 ##   LIB_MENU the Library menu is kMenus' own, as before.
 ## MENU BAR (18 Nov 2026, the owner's design): "graphic labels, one popup button to rule them all".
-##   The titles are green graphics; a mouse down fills ONE popup button (LIB_MENU's Menu.PopFor,
+##   The titles are green graphics; a click (mouseUp) fills ONE popup button (LIB_MENU's Menu.PopFor,
 ##   or the same button made here without LIB_MENU) in plain black on white. Ctrl + letter: the
 ##   shortcut items (commandKeyDown).
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
@@ -172,7 +172,8 @@ end Ig.BuildToolbar
 -- iGame3D (kMenus: menus split by #, items by ;, ~ = a submenu item, /X = its shortcut letter,
 -- ( = not working yet, so dimmed; ... = it opens a window). The View menu ticks what is on.
 -- The owner (18 Nov): "graphic labels, one popup button to rule them all". Each title is a green
--- graphic (menuTitle_File ...) holding its menu's text (cMenuText); a mouse down on it fills the
+-- graphic (menuTitle_File ...) holding its menu's text (cMenuText); a click on it (mouseUp: a popup
+-- opened on mouseDown closed again at once, the owner 18 Nov) fills the
 -- ONE popup button of the card (LIB_MENU's Menu.PopFor, else Ig.PopButton here) and pops it under
 -- the title. A pick comes back as menuPopPick (or the local popup's menuPick) to Ig.MenuBar.
 -- No pulldown buttons any more: a dropdown took its button's green on Windows.
@@ -204,13 +205,13 @@ on Ig.BuildMenus
       set the opaque of graphic tT of group id tGroup to true    -- filled: an empty graphic takes clicks on its outline only
       set the lineSize of graphic tT of group id tGroup to 0
       set the textSize of graphic tT of group id tGroup to 12
-      set the script of graphic tT of group id tGroup to "on mouseDown" & cr & "   Ig.MenuDown the long id of me" & cr & "end mouseDown"
+      set the script of graphic tT of group id tGroup to "on mouseUp" & cr & "   Ig.MenuDown the long id of me" & cr & "end mouseUp"
    end repeat
    set the itemDel to comma
    Ig.Layout
 end Ig.BuildMenus
 
--- a mouse down on a menu title: its menu now (the Library filled from LIB_MENU), in the one popup
+-- a click (mouseUp) on a menu title: its menu now (the Library filled from LIB_MENU), in the one popup
 on Ig.MenuDown pTitle
    local tMenu, tText, tBtn, tErr
    put the cMenu of pTitle into tMenu
