@@ -11,7 +11,7 @@ tags	tags_default
 version	2
 [design]
 ##############
-#.T....#...M.#
+#.T..S.#...M.#
 #......#.....#
 #......#.}}}.#
 #.@....+.}}}.#
@@ -22,7 +22,7 @@ version	2
 ##############
 [tags]
 ##############
-#.T....#...M.#
+#.T..S.#...M.#
 #......#.....#
 #......#.}}}.#
 #.@....+.}}}.#
@@ -78,6 +78,7 @@ version	2
 [links]
 4,8	pad	8,8	the plate opens the south door
 10,8	anti	8,8	this plate shuts it again
+6,2	switch	8,5	the switch works the middle door
 3,2	teleport	13,9	west teleporter to the east room
 13,9	teleport	3,2	and back
 10,7	camera	@cam1	the pool camera

@@ -4,7 +4,7 @@
     python3 -I tools/make_card_maps.py
 
 cards_yard.cellmap   a west room and an east room (version 2): the @ start, two doors (+),
-                     a pressure plate and an anti plate linked to the south door, a teleporter
+                     a pressure plate and an anti plate linked to the south door, a switch for the middle door, a teleporter
                      pair, a stepped pool (deep water), a monster spawner, three camera squares,
                      a ~ tunnel without a roof yet. E04-E11 and E15 use it; E12 finds no problem in it.
 cards_broken.cellmap a map with a problem of every kind the checker (E12) knows.
@@ -17,7 +17,7 @@ import cellmap as cm  # noqa: E402
 
 YARD = [
     '##############',
-    '#.T....#...M.#',
+    '#.T..S.#...M.#',
     '#......#.....#',
     '#......#.}}}.#',
     '#.@....+.}}}.#',
@@ -60,6 +60,7 @@ def yard():
     m['links'] = [
         dict(**{'from': '4,8', 'type': 'pad', 'to': '8,8', 'note': 'the plate opens the south door'}),
         dict(**{'from': '10,8', 'type': 'anti', 'to': '8,8', 'note': 'this plate shuts it again'}),
+        dict(**{'from': '6,2', 'type': 'switch', 'to': '8,5', 'note': 'the switch works the middle door'}),
         dict(**{'from': '3,2', 'type': 'teleport', 'to': '13,9', 'note': 'west teleporter to the east room'}),
         dict(**{'from': '13,9', 'type': 'teleport', 'to': '3,2', 'note': 'and back'}),
         dict(**{'from': '10,7', 'type': 'camera', 'to': '@cam1', 'note': 'the pool camera'}),
