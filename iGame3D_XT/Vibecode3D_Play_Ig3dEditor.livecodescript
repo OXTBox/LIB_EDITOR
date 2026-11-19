@@ -27,6 +27,15 @@
 ##   (the 2008 Lua hooks, in xTalk; Data/Scripts/LEVEL_API.txt); Library > Levels opens one,
 ##   File > Save writes the scene to one. Library > Set Data Folder... points the editor at a full
 ##   2008-style Data folder; without one it needs nothing outside its own folder.
+## LIBRARY MENU (18 Nov 2026): when LIB_MENU is in the projects folder, the Library menu comes from
+##   LIB_MENU/Data/Default/Ig3dEditor/Menus/Library.txt (your copy in Data/Menus/Ig3dEditor/ wins):
+##   the items above, plus Data and Games filled from the Data folder each time it opens. A pick
+##   on a folder shows it in the Library list; only "Explore here..." opens Explorer. Without
+##   LIB_MENU the Library menu is kMenus' own, as before.
+## MENU BAR (18 Nov 2026, the owner's design): "graphic labels, one popup button to rule them all".
+##   The titles are green graphics; a click (mouseUp) fills ONE popup button (LIB_MENU's Menu.PopFor,
+##   or the same button made here without LIB_MENU) in plain black on white. Ctrl + letter: the
+##   shortcut items (commandKeyDown).
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
 ######################################################################################
 
@@ -38,12 +47,41 @@ local sAqua          -- the Aquarius bitmap and models: ["bits"], ["from"], ["ke
 local sBld, sBldN, sBldOf   -- buildings: sBld[n] name/shell/parts; sBldOf[shell key] = n
 local sLayout         -- where things are: ["dock"] top/bottom/left/right, ["collapsed"], ["tab"], ["fps"], the free area
 local sObj, sLevel, sDataFolder, sTestPrefs   -- what each made thing is (for File > Save), the level, the chosen Data folder
+local sLibMenu        -- the Library menu from LIB_MENU: ["on"] in use, ["text"] its last text, ["off"] test hook
 
 -- TOOLBAR_MAP: name | Unicode code point | 2007 icon | group | tooltip (iGame3D)
 constant kTools = "level|2699|console.png|editing mode|Level settings;snapshot|25D9|snapshot.png|camera tools|Snapshot of the 3D view;colors|25D0|colorball16x16.png|camera tools|Colours;light|2600|lights.png|light|Position lights;objects|263A|32x32zombie3.png|actors and effects|Access view settings (actors);particles|2733|particlesicon24x24.png|actors and effects|Particles;camera|25CE|meshView.png|camera tools|Camera / mesh view;GLController|2725|repositiontoolnew2.png|camera tools|Show/hide the GL controller;pathselect|21E2|pathSelectIcon.png|mesh tools|Path selection;path|270E|pathToolIcon.png|mesh tools|Path editing;select_mesh|25A6|tool6.png|vertex tools|Mesh editing;vertex|2022|tool2.png|vertex tools|Create vertex;line|2571|tool3.png|vertex tools|Connect vertices;disconnect|2702|tool5.png|vertex tools|Disconnect mesh line;split|22D4|tool4.png|vertex tools|Split mesh line;quad|25AD|22x22quadtool.png|primitives|Quad;cube|25A3|cube.png|primitives|Cube;dropMesh|2913|dropMeshicon.png|primitives|Drop mesh;Terrain|25B2|quad.png|primitives|Import image to terrain;Play_Game|25B6|playGameButton.png|editing mode|Play (Escape exits);sounds|266A|soundicon22x22.png|actors and effects|Sounds;cylinder|232D|cylinder.png|primitives|Cylinder;cone|25B3|cone.png|primitives|Cone;sphere|25CF|sphere.png|primitives|Sphere;WindowPickPop|2750|windows.png|windows|Open windows;bones|27DF|bone.png|mesh tools|Bones"
 
 constant kMenus = "File=New Level/N;Open Level.../O;Save Level/S;-;Clear Level;-;Mesh;~Save In Level;~Export;~Clear;-;Close Window/W#Edit=Undo/Z;-;(Cut/X;(Copy/C;(Paste/V;(Select All/A;-;Replace With Model...;-;Boom;Boom All#View=Toolbar At Top;Toolbar At Bottom;Toolbar At Left;Toolbar At Right;-;Hide Tools;Show Tools;-;Frame Rate;~15 fps;~30 fps;~60 fps;-;Show Library;Hide Library#Library=Models;Levels;Text;-;Emitters;Images;Materials;Scripts;Sounds;-;Set Data Folder...#Mesh=Focus Mesh/0;Goto Points;Tag Vertices/T;Duplicate Vertices/D;Extrude/E;Select;~All Vertices;~Connected/g;~Invert/i;~Attached To Bone;Face;~Face In/[;~Face Out/];~Invert Faces/*;View;~Hide/h;~Hide Other/f;~Hide All;~Show All/u;Mirror;~X;~Y;~Z;~Double Side;-;Combine Overlaps;Subdivide;-;Delete Vertices#Dev=SAVE;-;Edit F1Script;Edit SGScript;Edit RLScript;StackScript;-;Xternals;-;stopIdle;-;pointer tool/m;-;FindT3D/3;-;scriptHarvester;OpenStacks;CustomPropLengths;RevFunctions;Harvest;-;resetiGame3D;BackUp#Window=Window Snapping;Mode;~Level;~Model;-;Animation Editor;Console;ig3dWTFEDITOR;Inspector;Level Collect;Library;Scene Graph;Snapshot#Help=iGame3D Help/?;Referencer;Script Commands"
 constant kInk = "#7CFF7C"
+constant kPaper = "#061006"
+
+-- the owner's rule (18 Nov): colour the template BEFORE create, so nothing new is ever born in the
+-- stack's colours (a menu's dropdown takes its button's colours: ink on white was "extreme green")
+on Ig.Template pKind
+   switch pKind
+      case "group"
+         reset the templateGroup
+         break
+      case "graphic"
+         reset the templateGraphic
+         set the foregroundColor of the templateGraphic to kInk
+         set the backgroundColor of the templateGraphic to kPaper
+         break
+      case "button"
+         reset the templateButton
+         set the textColor of the templateButton to kInk
+         set the backgroundColor of the templateButton to kPaper
+         set the borderColor of the templateButton to "#1C4A2A"
+         break
+      case "field"
+         reset the templateField
+         set the textColor of the templateField to kInk
+         set the backgroundColor of the templateField to kPaper
+         set the borderColor of the templateField to "#1C4A2A"
+         break
+   end switch
+end Ig.Template
 
 on Game.OnStart
    local tKeep
@@ -90,12 +128,12 @@ on Ig.BuildToolbar
    local tTool, n, x, tName, tGroup
    lock screen
    if there is not a group "Ig3dTools" of this card then
-      reset the templateGroup
+      Ig.Template "group"
       create group "Ig3dTools"
       set the lockLoc of group "Ig3dTools" to true
       set the rect of group "Ig3dTools" to the rect of this card
       -- the menu bar's strip first, so it lies under everything else in the group
-      reset the templateGraphic
+      Ig.Template "graphic"
       create graphic "Ig3dMenuBar" in group "Ig3dTools"
    end if
    set the visible of group "Ig3dTools" to true
@@ -111,7 +149,7 @@ on Ig.BuildToolbar
       add 1 to n
       put item 1 of tTool into tName
       if there is not a button tName of group id tGroup then
-         reset the templateButton
+         Ig.Template "button"
          create button tName in group id tGroup
       end if
       set the label of button tName of group id tGroup to numToCodepoint(baseConvert(item 2 of tTool, 16, 10))
@@ -133,10 +171,15 @@ end Ig.BuildToolbar
 -- the menu bar, Macintosh order: File Edit View Library Mesh Dev Window Help; items as in
 -- iGame3D (kMenus: menus split by #, items by ;, ~ = a submenu item, /X = its shortcut letter,
 -- ( = not working yet, so dimmed; ... = it opens a window). The View menu ticks what is on.
+-- The owner (18 Nov): "graphic labels, one popup button to rule them all". Each title is a green
+-- graphic (menuTitle_File ...) holding its menu's text (cMenuText); a click on it (mouseUp: a popup
+-- opened on mouseDown closed again at once, the owner 18 Nov) fills the
+-- ONE popup button of the card (LIB_MENU's Menu.PopFor, else Ig.PopButton here) and pops it under
+-- the title. A pick comes back as menuPopPick (or the local popup's menuPick) to Ig.MenuBar.
+-- No pulldown buttons any more: a dropdown took its button's green on Windows.
 on Ig.BuildMenus
-   local tMenu, tName, tText, tGroup, x
+   local tMenu, tName, tText, tGroup, tT
    put the short id of group "Ig3dTools" into tGroup
-   put 6 into x
    set the itemDel to "#"
    repeat for each item tMenu in kMenus
       put char 1 to offset("=", tMenu) - 1 of tMenu into tName
@@ -144,24 +187,112 @@ on Ig.BuildMenus
       replace ";" with cr in tText
       replace "~" with tab in tText
       if tName is "View" then put Ig.TickView(tText) into tText
-      if there is not a button ("menu_" & tName) of group id tGroup then
-         reset the templateButton
-         create button ("menu_" & tName) in group id tGroup
+      if tName is "Library" and sLibMenu["on"] is true and sLibMenu["text"] is not empty then put sLibMenu["text"] into tText
+      if there is a button ("menu_" & tName) of group id tGroup then delete button ("menu_" & tName) of group id tGroup   -- the old pulldowns
+      put "menuTitle_" & tName into tT
+      if there is not a graphic tT of group id tGroup then
+         Ig.Template "graphic"
+         create graphic tT in group id tGroup
       end if
-      set the style of button ("menu_" & tName) of group id tGroup to "menu"
-      set the menuMode of button ("menu_" & tName) of group id tGroup to "pulldown"
-      set the label of button ("menu_" & tName) of group id tGroup to tName
-      set the text of button ("menu_" & tName) of group id tGroup to tText
-      set the textColor of button ("menu_" & tName) of group id tGroup to kInk
-      set the showBorder of button ("menu_" & tName) of group id tGroup to false
-      set the opaque of button ("menu_" & tName) of group id tGroup to false
-      set the traversalOn of button ("menu_" & tName) of group id tGroup to false
-      set the textSize of button ("menu_" & tName) of group id tGroup to 12
-      set the script of button ("menu_" & tName) of group id tGroup to "on menuPick pItem" & cr & "   Ig.Menu the label of me, pItem" & cr & "end menuPick"
+      set the style of graphic tT of group id tGroup to "rectangle"
+      set the showName of graphic tT of group id tGroup to true
+      set the label of graphic tT of group id tGroup to tName
+      set the cMenu of graphic tT of group id tGroup to tName
+      set the cMenuText of graphic tT of group id tGroup to tText
+      set the textColor of graphic tT of group id tGroup to kInk
+      set the foregroundColor of graphic tT of group id tGroup to kInk
+      set the backgroundColor of graphic tT of group id tGroup to "#0A1A0E"   -- the strip's own colour
+      set the opaque of graphic tT of group id tGroup to true    -- filled: an empty graphic takes clicks on its outline only
+      set the lineSize of graphic tT of group id tGroup to 0
+      set the textSize of graphic tT of group id tGroup to 12
+      set the script of graphic tT of group id tGroup to "on mouseUp" & cr & "   Ig.MenuDown the long id of me" & cr & "end mouseUp"
    end repeat
    set the itemDel to comma
    Ig.Layout
 end Ig.BuildMenus
+
+-- a click (mouseUp) on a menu title: its menu now (the Library filled from LIB_MENU), in the one popup
+on Ig.MenuDown pTitle
+   local tMenu, tText, tBtn, tErr
+   put the cMenu of pTitle into tMenu
+   Ig.MenuOpening tMenu, pTitle
+   put the cMenuText of pTitle into tText
+   if Ig.UseMenus() then
+      Menu.PopFor pTitle, tText
+      if the result is empty or the result is "no screen" then exit Ig.MenuDown
+   end if
+   put Ig.PopFill(pTitle, tText) into tBtn
+   try
+      popup tBtn at the left of pTitle, the bottom of pTitle
+   catch tErr
+      -- no screen (a headless test): the popup is filled, nothing to show it on
+   end try
+end Ig.MenuDown
+
+-- the pick from LIB_MENU's one popup (Menu.PopFor sends it to the title, the title passes it here)
+on menuPopPick pMenu, pItem
+   Ig.MenuBar pMenu, pItem
+end menuPopPick
+
+-- without LIB_MENU: the same one popup button, made here the same way (plain colours, set on the
+-- template BEFORE create and on the button), filled for pTitle; its long id
+function Ig.PopFill pTitle, pText
+   local tB
+   if there is not a button "LIB_MENU_Popup" of this card then
+      lock messages
+      reset the templateButton
+      set the textColor of the templateButton to "0,0,0"
+      set the backgroundColor of the templateButton to "255,255,255"
+      set the hiliteColor of the templateButton to "51,153,255"
+      set the borderColor of the templateButton to "128,128,128"
+      set the style of the templateButton to "menu"
+      set the menuMode of the templateButton to "popup"
+      set the visible of the templateButton to false
+      create button "LIB_MENU_Popup"
+      reset the templateButton
+      unlock messages
+   end if
+   put the long id of button "LIB_MENU_Popup" of this card into tB
+   set the style of tB to "menu"
+   set the menuMode of tB to "popup"
+   set the visible of tB to false
+   set the textColor of tB to "0,0,0"
+   set the backgroundColor of tB to "255,255,255"
+   set the hiliteColor of tB to "51,153,255"
+   set the borderColor of tB to "128,128,128"
+   set the traversalOn of tB to false
+   if the script of tB is empty then set the script of tB to "on menuPick pItem" & cr & "   Ig.MenuBar the cMenuName of me, pItem" & cr & "end menuPick"
+   set the text of tB to pText
+   set the cMenuName of tB to the cMenu of pTitle
+   set the cMenuTarget of tB to the long id of pTitle
+   set the cMenuFile of tB to false
+   return tB
+end Ig.PopFill
+
+-- the shortcuts (/N, /S, /0 ...): Ctrl (Command on a Mac) + the letter picks that item, as the old
+-- menu buttons did. Dimmed items (() are skipped; nothing found: passed on.
+on commandKeyDown pKey
+   local tHit
+   put Ig.ShortcutFor(pKey) into tHit
+   if tHit is empty then pass commandKeyDown
+   set the itemDel to "|"
+   Ig.MenuBar item 1 of tHit, item 2 to -1 of tHit
+end commandKeyDown
+
+-- the shortcut letter's item for pKey, as Menu|Item (tests and the help)
+function Ig.ShortcutFor pKey
+   local tMenu, tName, tLine
+   set the itemDel to "#"
+   repeat for each item tMenu in kMenus
+      put char 1 to offset("=", tMenu) - 1 of tMenu into tName
+      replace ";" with cr in tMenu
+      repeat for each line tLine in char offset("=", tMenu) + 1 to -1 of tMenu
+         if char 1 of tLine is "~" then delete char 1 of tLine
+         if char -2 of tLine is "/" and char -1 of tLine is pKey and char 1 of tLine is not "(" then return tName & "|" & tLine
+      end repeat
+   end repeat
+   return empty
+end Ig.ShortcutFor
 
 -- the menu titles in order
 function Ig.MenuNames
@@ -268,7 +399,7 @@ on Ig.Layout
    set the rect of group id tG to the rect of this card
    -- the menu bar: a strip across the top, the titles on it
    if there is not a graphic "Ig3dMenuBar" of group id tG then
-      reset the templateGraphic
+      Ig.Template "graphic"
       create graphic "Ig3dMenuBar" in group id tG
    end if
    if the style of graphic "Ig3dMenuBar" of group id tG is not "rectangle" then
@@ -280,15 +411,15 @@ on Ig.Layout
    set the rect of graphic "Ig3dMenuBar" of group id tG to -1, -1, tW + 1, kBarH
    put 8 into x
    repeat for each line tName in Ig.MenuNames()
-      put "menu_" & tName into tB
-      if there is not a button tB of group id tG then next repeat
-      put max(the formattedWidth of button tB of group id tG, the number of chars of tName * 7 + 14) into k
-      set the rect of button tB of group id tG to x, 1, x + k, kBarH - 1
+      put "menuTitle_" & tName into tB
+      if there is not a graphic tB of group id tG then next repeat
+      put the number of chars of tName * 7 + 14 into k
+      set the rect of graphic tB of group id tG to x, 1, x + k, kBarH - 1
       add k + 2 to x
    end repeat
    -- the tools: ]< (or ]>) first, then the buttons, in rows or columns along one side
    if there is not a button "Ig3dToolsTab" of group id tG then
-      reset the templateButton
+      Ig.Template "button"
       create button "Ig3dToolsTab" in group id tG
       set the textSize of button "Ig3dToolsTab" of group id tG to 12
       set the textStyle of button "Ig3dToolsTab" of group id tG to "bold"
@@ -418,6 +549,154 @@ on Ig.TabDown
    Ig.SaveLayout
    Ig.Layout
 end Ig.TabDown
+
+-------------------------------------------------------------------- the Library menu from LIB_MENU
+-- The Library menu is the Data folder turned into a menu (iGame3D 2009): LIB_MENU reads
+-- LIB_MENU/Data/Default/Ig3dEditor/Menus/Library.txt (your copy in the Data folder's
+-- Menus/Ig3dEditor/ wins) each time the menu opens, so a new folder in Data shows at once.
+-- A pick on a folder shows it in the Library list; "Explore here..." alone opens Explorer.
+-- Without LIB_MENU (or the projects folder) the menu is kMenus' Library, exactly as before.
+
+-- a menu title was pressed: the Library menu is filled now (into the title's cMenuText)
+on Ig.MenuOpening pMenu, pTitle
+   local tText
+   if pMenu is not "Library" then exit Ig.MenuOpening
+   put Ig.LibraryMenuText() into tText
+   if tText is not empty then set the cMenuText of pTitle to tText
+end Ig.MenuOpening
+
+-- the Library menu's text from LIB_MENU, or empty (then the button keeps kMenus' Library)
+function Ig.LibraryMenuText
+   put false into sLibMenu["on"]
+   if not Ig.UseMenus() then return empty
+   Menu.Load "Ig3dEditor"
+   if the result is not empty or not ("Library" is among the lines of Menu.Names()) then return empty
+   put Menu.Text("Library") into sLibMenu["text"]
+   put true into sLibMenu["on"]
+   return sLibMenu["text"]
+end Ig.LibraryMenuText
+
+-- LIB_MENU in use (and LIB_DATA, for the Data folder), started from the projects folder the
+-- way the tools are; false when there is none (an installed copy) or the test hook says so
+function Ig.UseMenus
+   local tP, tErr
+   if sLibMenu["off"] is true then return false
+   if "LIB_MENU" is among the lines of the stacksInUse then return true
+   put Ig.Projects() into tP
+   if tP is empty or there is not a file (tP & "/LIB_MENU/livecode/lib_menu.livecodescript") then return false
+   try
+      if not ("LIB_DATA" is among the lines of the stacksInUse) and there is a file (tP & "/LIB_DATA/livecode/lib_data.livecodescript") then
+         start using stack (tP & "/LIB_DATA/livecode/lib_data.livecodescript")
+      end if
+      start using stack (tP & "/LIB_MENU/livecode/lib_menu.livecodescript")
+   catch tErr
+      return false
+   end try
+   return "LIB_MENU" is among the lines of the stacksInUse
+end Ig.UseMenus
+
+-- test hook: true = act as if LIB_MENU were not there
+on Ig.TestMenusOff pFlag
+   put pFlag into sLibMenu["off"]
+   if pFlag is true then put false into sLibMenu["on"]
+end Ig.TestMenusOff
+
+-- a pick in the menu bar: the Library goes through LIB_MENU when its menu came from there
+on Ig.MenuBar pMenu, pItem
+   if pMenu is "Library" and sLibMenu["on"] is true and sLibMenu["off"] is not true then
+      if Menu.App() is not "Ig3dEditor" then Menu.Load "Ig3dEditor"
+      Menu.Pick "Library", pItem, the long id of me
+      if the result is not "unhandled" then exit Ig.MenuBar
+   end if
+   Ig.Menu pMenu, pItem
+end Ig.MenuBar
+
+-- Library > Data / Games: what is in a folder, in the Library list (folders first, then files).
+-- pInside true: a step inside the folder first shown (".." goes back up to it, never above).
+on Ig.ShowFolder pFolder, pInside
+   local tDirs, tFiles, tOut, tLine
+   replace "\" with "/" in pFolder
+   if there is not a folder pFolder then
+      Ig.Say "NOT A FOLDER:" && pFolder
+      exit Ig.ShowFolder
+   end if
+   if pInside is not true then put pFolder into sLib["top"]
+   put pFolder into sLib["dir"]
+   put folders(pFolder) into tDirs
+   filter tDirs without ".*"
+   sort lines of tDirs
+   put files(pFolder) into tFiles
+   filter tFiles without ".*"
+   sort lines of tFiles
+   if pFolder is not sLib["top"] then put ".." & cr into tOut
+   repeat for each line tLine in tDirs
+      put tLine & "/" & cr after tOut
+   end repeat
+   repeat for each line tLine in tFiles
+      put tLine & cr after tOut
+   end repeat
+   if the last char of tOut is cr then delete the last char of tOut
+   put tOut into sLibList
+   put "Disk" into sLib["folder"]
+   put false into sLib["browse"]
+   put empty into sLib["sel"]
+   Ig.ShowLibrary
+   set the hilitedLine of field "Ig3dLibrary" of group "Ig3dTools" to empty
+   set the vScroll of field "Ig3dLibrary" of group "Ig3dTools" to 0
+   set the itemDelimiter to "/"
+   Ig.Say "LIBRARY >" && toUpper(item -1 of pFolder) & ":" && the number of lines of tDirs && "FOLDERS," && the number of lines of tFiles && "FILES.  DOUBLE-CLICK A FOLDER (OR RETURN) TO GO IN.  LIBRARY > EXPLORE HERE... OPENS IT IN EXPLORER"
+   set the itemDelimiter to comma
+end Ig.ShowFolder
+
+-- a double-click or Return on a line of a folder shown by Ig.ShowFolder
+on Ig.FolderOpen pLine
+   local tName
+   put line pLine of sLibList into tName
+   set the itemDelimiter to "/"
+   if tName is ".." then
+      Ig.ShowFolder item 1 to -2 of sLib["dir"], true
+   else if tName is not empty and the last char of tName is "/" then
+      Ig.ShowFolder sLib["dir"] & "/" & char 1 to -2 of tName, true
+   else if tName is not empty then
+      Ig.Say toUpper(tName) & ": A FILE.  LIBRARY > EXPLORE HERE... SHOWS IT IN EXPLORER"
+   end if
+   set the itemDelimiter to comma
+end Ig.FolderOpen
+
+-- the menu's ending, "Explore here...": Explorer at the chosen file or the folder the Library
+-- list shows, else at the Data folder (LIB_DATA), else at this editor's own Data folder
+on menuExploreHere pTarget
+   local tPath, tIsFolder, tLine, tErr
+   put 1 into tIsFolder
+   if sLib["folder"] is "Disk" and sLib["dir"] is not empty then
+      put sLib["dir"] into tPath
+      if sLib["sel"] is a number then
+         put line sLib["sel"] of sLibList into tLine
+         if tLine is not empty and tLine is not ".." and the last char of tLine is not "/" then
+            put tPath & "/" & tLine into tPath
+            put 0 into tIsFolder
+         end if
+      end if
+   else
+      try
+         put Data.Root() into tPath
+      catch tErr
+         put empty into tPath
+      end try
+      if tPath is empty then put Ig.XTData() into tPath
+   end if
+   Menu.Explore tPath, tIsFolder
+   Ig.Say the result
+end menuExploreHere
+
+-- the menu's ending, "Leave comment...": the game notes box (` or F2) when it is loaded
+on menuLeaveComment pTarget
+   if there is a stack "GameNotes" then
+      dispatch "Notes.Open" to stack "GameNotes"
+   else
+      Ig.Say "LEAVE COMMENT: THE GAME NOTES BOX (` OR F2) IS NOT LOADED HERE"
+   end if
+end menuLeaveComment
 
 on Ig.Menu pMenu, pItem
    Ig.Wake
@@ -679,7 +958,7 @@ on Ig.ShowLibrary
    local tGroup, tN
    put the short id of group "Ig3dTools" into tGroup
    if there is not a field "Ig3dLibrary" of group id tGroup then
-      reset the templateField
+      Ig.Template "field"
       create field "Ig3dLibrary" in group id tGroup
       set the listBehavior of field "Ig3dLibrary" of group id tGroup to true
       set the lockText of field "Ig3dLibrary" of group id tGroup to true
@@ -695,7 +974,7 @@ on Ig.ShowLibrary
    -- the preview: a box, and the model's wire in it; pressing on it drags the model out
    repeat for each item tN in "Ig3dPreview,Ig3dPreviewWire"
       if there is not a graphic tN of group id tGroup then
-         reset the templateGraphic
+         Ig.Template "graphic"
          create graphic tN in group id tGroup
          set the script of graphic tN of group id tGroup to "on mouseDown" & cr & "   Ig.PreviewDrag" & cr & "end mouseDown"
       end if
@@ -709,7 +988,7 @@ on Ig.ShowLibrary
    set the foregroundColor of graphic "Ig3dPreviewWire" of group id tGroup to kInk
    -- a little X above the preview's top right corner closes the Library
    if there is not a button "Ig3dLibraryClose" of group id tGroup then
-      reset the templateButton
+      Ig.Template "button"
       create button "Ig3dLibraryClose" in group id tGroup
       set the label of button "Ig3dLibraryClose" of group id tGroup to "X"
       set the textSize of button "Ig3dLibraryClose" of group id tGroup to 11
@@ -1182,6 +1461,10 @@ on Ig.LibraryPick pLine
    local tRel, tPath, tName
    if pLine is not a number then exit Ig.LibraryPick
    Ig.Wake
+   if sLib["folder"] is "Disk" then
+      Ig.FolderOpen pLine
+      exit Ig.LibraryPick
+   end if
    if sLib["browse"] is true and (line pLine of sLibList is ".." or the last char of line pLine of sLibList is "/") then
       Ig.Say "DOUBLE-CLICK (OR RETURN) TO OPEN" && toUpper(line pLine of sLibList)
       exit Ig.LibraryPick
