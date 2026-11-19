@@ -1,0 +1,109 @@
+-- E10 A Spawner with no window: the yard's sp1 (initial 2, min 1, max 4, chance 25 every 30,
+-- spread 2) with a fixed seed: two orbs at the start, taken one by one, one back at once when
+-- none is left, then never more than four however long it runs.
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e10_headless.txt
+local tState, tOrbs, tMost, tN
+put ck("E10 compiles", cardOpen("E10_Spawner.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+get cardDo("E10.TestSeed", 7)
+put cardStart("E10") into tState
+put ck("start: two orbs (initial 2), the rules read from the map", tState, "9,2|orbs 2|taken 0|made 2|min 1 max 4 chance 25 every 30|") & return after tLog
+put cardFn("E10.Orbs") into tOrbs
+put ck("  both near the spawner at 12,2, on different dry cells", nearSpawner(tOrbs), "2 ok") & return after tLog
+get cardDo("E10.TestPlace", item 1 of line 1 of tOrbs, item 2 of line 1 of tOrbs)
+put ckStart("walk onto the first: taken, one left (min 1 is still met)", cardRun("E10", "0", 1), line 1 of tOrbs & "|orbs 1|taken 1|made 2|") & return after tLog
+get cardDo("E10.TestPlace", item 1 of line 2 of tOrbs, item 2 of line 2 of tOrbs)
+put ckStart("take the second: none left, so one comes back at once", cardRun("E10", "0", 1), line 2 of tOrbs & "|orbs 1|taken 2|made 3|") & return after tLog
+put ck("  not on the hero's own cell", line 2 of tOrbs is among the lines of cardFn("E10.Orbs"), false) & return after tLog
+put 0 into tMost
+repeat 40 times
+  put cardRun("E10", "0", 30) into tState
+  set the itemDel to "|"
+  put max(tMost, word 2 of item 2 of tState) into tMost
+  set the itemDel to comma
+end repeat
+put ckStart("forty seconds standing still: it fills up to four", tState, line 2 of tOrbs & "|orbs 4|taken 2|made 6|") & return after tLog
+put ck("  and never more than four on the way", tMost, 4) & return after tLog
+put ck("  all four near the spawner, on different dry cells", nearSpawner(cardFn("E10.Orbs")), "4 ok") & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas
+
+-- each line a cell within 2 of 12,2 that is dry ground in the yard's east room; "count ok"
+function nearSpawner pList
+  local tL, n
+  put 0 into n
+  repeat for each line tL in pList
+    if abs(item 1 of tL - 12) > 2 or abs(item 2 of tL - 2) > 2 then return "far: " & tL
+    if item 1 of tL < 9 or item 1 of tL > 13 or item 2 of tL < 2 then return "in a wall: " & tL
+    if item 2 of tL is 4 and item 1 of tL >= 10 and item 1 of tL <= 12 then return "in the pool: " & tL
+    add 1 to n
+  end repeat
+  return n && "ok"
+end nearSpawner

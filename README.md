@@ -26,6 +26,7 @@ The owner's brief (About_Lib_editor.txt, 2026-11-14):
 | E07 A pad opens a door | links: a plate here, a door there | `tests/e07_headless.txt` |
 | E08 Teleporter pairs | step on a pad, stand on its partner; no bouncing back | `tests/e08_headless.txt` |
 | E09 Water with a tide | the pool fills and empties; deeper water, slower feet | `tests/e09_headless.txt` |
+| E10 A spawner | orbs appear, are taken, come back: initial / min / max / chance % | `tests/e10_headless.txt` |
 | E12 The checker | lists a map's problems, N jumps the camera to each; M next map | `tests/e12_headless.txt` |
 | E13 Walk the map | the whole map as a level, walked | `tests/e13_headless.txt` |
 | E15 Undo | Q / A raise or lower a cell; U undoes, R redoes, all the way back | `tests/e15_headless.txt` |
