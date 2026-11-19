@@ -1,0 +1,92 @@
+-- E11 Camera Squares with no window: the follow camera, the fixed pool camera (cam1), the
+-- corner camera that turns to watch (cam2), the flyby (cam3) that plays to its end and then
+-- gives the view back. Positions in engine units (x, up, z), yaw 0 = looking south.
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e11_headless.txt
+local tState, tYaw1
+put ck("E11 compiles", cardOpen("E11_CameraSquares.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E11") into tState
+put ck("start on the @: the follow camera, north of the hero and above", tState, "3,5|follow follow|at -342,301,-298|yaw 0 pitch -44|fly 0|") & return after tLog
+get cardDo("E11.TestPlace", 11, 7)
+put ck("onto a pool square: cam1, fixed in the corner, facing south-west, 40 down", cardRun("E11", "0", 1), "11,7|cam1 fixed|at 448,112,-190|yaw 315 pitch -40|fly 0|") & return after tLog
+put ck("along the squares it stays put", cardRun("E11", "97", 20), "10,7|cam1 fixed|at 448,112,-190|yaw 315 pitch -40|fly 0|") & return after tLog
+put ckStart("off the squares: the follow camera again", cardRun("E11", "97", 20), "9,7|follow follow|") & return after tLog
+get cardDo("E11.TestPlace", 5, 3)
+put ck("onto 5,3: cam2, high in the far corner, turned to the hero", cardRun("E11", "0", 1), "5,3|cam2 target|at -448,137,-296|yaw 68 pitch -17|fly 0|") & return after tLog
+put ck("  it turns as the hero walks (still on the square)", cardRun("E11", "100", 10), "5,3|cam2 target|at -448,137,-296|yaw 70 pitch -16|fly 0|") & return after tLog
+get cardDo("E11.TestPlace", 3, 9)
+put ck("onto 3,9: the flyby starts over 2,2, flying east", cardRun("E11", "0", 1), "3,9|cam3 flyby|at -418,162,-266|yaw 90 pitch -35|fly 119|") & return after tLog
+put ck("  half way: down the east side, flying south", cardRun("E11", "0", 59), "3,9|cam3 flyby|at 418,162,-13|yaw 0 pitch -35|fly 60|") & return after tLog
+put ck("  walking off the square does not stop it", cardRun("E11", "119", 20), "3,8|cam3 flyby|at 418,162,253|yaw 0 pitch -35|fly 40|") & return after tLog
+put ck("  at its end the view is the hero's again", cardRun("E11", "0", 40), "3,8|follow follow|at -342,301,-54|yaw 0 pitch -44|fly 0|") & return after tLog
+put ck("  and it waits there for the square to be entered again", cardRun("E11", "0", 30), "3,8|follow follow|at -342,301,-54|yaw 0 pitch -44|fly 0|") & return after tLog
+put ckStart("back onto 3,9: it flies again", cardRun("E11", "115", 15), "3,9|cam3 flyby|") & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas

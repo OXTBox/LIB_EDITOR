@@ -1,0 +1,87 @@
+-- E08 Teleporter Pairs with no window: the red pad at 3,2 sends the hero to 13,9 and back;
+-- arriving is not entering (standing on the far pad does nothing); step off and on to go home.
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e08_headless.txt
+local tState
+put ck("E08 compiles", cardOpen("E08_Teleporters.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E08") into tState
+put ck("start on the @, no jumps", tState, "3,5|y 1|path|jumps 0||") & return after tLog
+get cardDo("E08.TestPlace", 3, 3)
+put ck("north onto the west pad: the hero stands on the east pad", cardRun("E08", "119", 15), "13,9|y 1|teleport|jumps 1|TELEPORT: WEST TELEPORTER TO THE EAST ROOM|") & return after tLog
+put ck("standing still on the partner pad: no bounce back", cardRun("E08", "0", 60), "13,9|y 1|teleport|jumps 1|TELEPORT: WEST TELEPORTER TO THE EAST ROOM|") & return after tLog
+put ck("step off north", cardRun("E08", "119", 30), "13,8|y 1|path|jumps 1|TELEPORT: WEST TELEPORTER TO THE EAST ROOM|") & return after tLog
+put ck("and back on: home to the west pad", cardRun("E08", "115", 30), "3,2|y 1|teleport|jumps 2|TELEPORT: AND BACK|") & return after tLog
+put ck("holding still on the west pad: no bounce", cardRun("E08", "0", 60), "3,2|y 1|teleport|jumps 2|TELEPORT: AND BACK|") & return after tLog
+get cardDo("E08.TestPlace", 4, 2)
+put ck("walking across a pad's row beside it does nothing", cardRun("E08", "100", 10), "4,2|y 1|path|jumps 2|TELEPORT: AND BACK|") & return after tLog
+get cardDo("E08.TestPlace", 4, 2)
+put ck("west onto the pad from the side: off again to the east room", cardRun("E08", "97", 15), "13,9|y 1|teleport|jumps 3|TELEPORT: WEST TELEPORTER TO THE EAST ROOM|") & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas
