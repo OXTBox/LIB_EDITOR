@@ -1,0 +1,96 @@
+-- E04 Ceilings with no window: the tunnel gets its roof, W and S move a roof, the air a hero needs,
+-- Return saves a copy (read back, then deleted). Run under the lock:
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e04_headless.txt
+local tState, tCopy, tMap
+put ck("E04 compiles", cardOpen("E04_Ceilings.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E04") into tState
+put ck("start on the tunnel's first cell, no roof", tState, "3,9|floor 1|ceiling 0|air open sky||") & return after tLog
+put ck("T roofs the tunnel a hallway up", cardTap("E04", "116"), "3,9|floor 1|ceiling 101|air 100 fits||") & return after tLog
+put ck("W twice: 80 hu of air is too low for a hero", cardTap("E04", "119", 2), "3,9|floor 1|ceiling 81|air 80 too low||") & return after tLog
+put ck("S twice: back up", cardTap("E04", "115", 2), "3,9|floor 1|ceiling 101|air 100 fits||") & return after tLog
+put ck("S past 255: the roof is gone", cardTap("E04", "115", 16), "3,9|floor 1|ceiling 0|air open sky||") & return after tLog
+put ck("S with no roof does nothing", cardTap("E04", "115"), "3,9|floor 1|ceiling 0|air open sky||") & return after tLog
+put ck("W with no roof starts one a hallway up", cardTap("E04", "119"), "3,9|floor 1|ceiling 101|air 100 fits||") & return after tLog
+put cardTap("E04", "65363") into tState
+put ck("right: the next tunnel cell kept its roof", tState, "4,9|floor 1|ceiling 101|air 100 fits||") & return after tLog
+put ckStart("W eleven times: the roof stops at the ground", cardTap("E04", "119", 11), "4,9|floor 1|ceiling 1|") & return after tLog
+put cardTap("E04", "65362", 4) into tState
+put ck("up four: open yard, no roof", tState, "4,5|floor 1|ceiling 0|air open sky||") & return after tLog
+put cardTap("E04", "65293") into tState
+put ckHas("Return saves a copy", tState, "SAVED CARDS_YARD_E04.CELLMAP") & return after tLog
+put "/home/igame3d/projects/LIB_EDITOR/maps/cards_yard_e04.cellmap" into tCopy
+put ck("the copy is on disk", there is a file tCopy, true) & return after tLog
+put url ("file:" & tCopy) into tMap
+put line 9 of (char offset("[ceiling]", tMap) + 10 to -1 of tMap) into tMap
+put ck("  ...row 9 of its roofs: 101 1 101 101 under the tunnel", (word 3 of tMap) && (word 4 of tMap) && (word 5 of tMap) && (word 6 of tMap), "101 1 101 101") & return after tLog
+delete file tCopy
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas

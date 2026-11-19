@@ -1,0 +1,95 @@
+-- E07 A Pad That Opens A Door with no window: the plate at 4,8 opens the door at 8,8, the anti
+-- plate at 10,8 shuts it, the switch at 6,2 (E) works the middle door. Run under the lock:
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e07_headless.txt
+local tState
+put ck("E07 compiles", cardOpen("E07_PadOpensDoor.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E07") into tState
+put ck("start on the @, both doors shut", tState, "3,5|y 1|path|door 8,5 1|door 8,8 1|||") & return after tLog
+get cardDo("E07.TestPlace", 7, 8)
+put ckStart("beside the south door it stays shut (no link from here)", cardRun("E07", "0", 20), "7,8|y 1|path|door 8,5 1|door 8,8 1|") & return after tLog
+get cardDo("E07.TestPlace", 2, 8)
+put ck("east onto the plate: the far door starts to open", cardRun("E07", "100", 30), "3,8|y 1|path|door 8,5 1|door 8,8 1||") & return after tLog
+put ck("  ...", cardRun("E07", "100", 10), "4,8|y 1|trigger|door 8,5 1|door 8,8 25|PAD: THE PLATE OPENS THE SOUTH DOOR|") & return after tLog
+put ckStart("  ...on through the open door", cardRun("E07", "100", 110), "9,8|y 1|path|door 8,5 1|door 8,8 100|") & return after tLog
+put ckStart("onto the anti plate: the door shuts behind", cardRun("E07", "100", 50), "10,8|y 1|trigger|door 8,5 1|door 8,8 ") & return after tLog
+put ck("  ...all the way", cardRun("E07", "0", 30), "10,8|y 1|trigger|door 8,5 1|door 8,8 1|ANTI: THIS PLATE SHUTS IT AGAIN|") & return after tLog
+put ckStart("walking back west, the shut door stops the hero", cardRun("E07", "97", 80), "9,8|y 1|path|door 8,5 1|door 8,8 1|") & return after tLog
+get cardDo("E07.TestPlace", 6, 2)
+put ck("standing on the switch does nothing yet", cardRun("E07", "0", 5), "6,2|y 1|trigger|door 8,5 1|door 8,8 1|ANTI: THIS PLATE SHUTS IT AGAIN|") & return after tLog
+get cardRun("E07", "101", 1)
+put ck("E: the switch opens the middle door", cardRun("E07", "0", 30), "6,2|y 1|trigger|door 8,5 100|door 8,8 1|SWITCH: THE SWITCH WORKS THE MIDDLE DOOR|") & return after tLog
+get cardRun("E07", "101", 1)
+put ck("E again: and shuts it", cardRun("E07", "0", 30), "6,2|y 1|trigger|door 8,5 1|door 8,8 1|SWITCH: THE SWITCH WORKS THE MIDDLE DOOR|") & return after tLog
+get cardDo("E07.TestPlace", 3, 5)
+get cardRun("E07", "101", 1)
+put ckStart("E away from a switch does nothing", cardRun("E07", "0", 30), "3,5|y 1|start|door 8,5 1|door 8,8 1|") & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas

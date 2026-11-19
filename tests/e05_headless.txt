@@ -1,0 +1,101 @@
+-- E05 Slopes with no window: lift edges and corners, the tidy rule, the steep rule, Shift lowers,
+-- 0 flattens, Return saves a version 3 copy (read back, then deleted). Run under the lock:
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e05_headless.txt
+local tState, tLines, tCopy, tMap
+put ck("E05 compiles", cardOpen("E05_Slopes.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E05") into tState
+put "INFO start: " & tState & return after tLog
+put ckStart("start on 4,4, flat", tState, "4,4|floor 1|slope flat|steep false|lines ") & return after tLog
+set the itemDel to "|"
+put item 5 of tState into tLines
+set the itemDel to comma
+put ckStart("L twice: the east edge 20 up, a ramp", cardTap("E05", "108", 2), "4,4|floor 1|slope 0,20,20,0|steep false|") & return after tLog
+put ckStart("1: the north-west corner 10 up", cardTap("E05", "49"), "4,4|floor 1|slope 10,20,20,0|") & return after tLog
+put ckStart("4: all four lifted, so tidied into the floor (11)", cardTap("E05", "52"), "4,4|floor 11|slope 0,10,10,0|steep false|") & return after tLog
+put ckStart("L five times: 60 across is still walkable", cardTap("E05", "108", 5), "4,4|floor 11|slope 0,60,60,0|steep false|") & return after tLog
+put ckStart("L once more: 70 is steep", cardTap("E05", "108"), "4,4|floor 11|slope 0,70,70,0|steep true|") & return after tLog
+put ckStart("Shift L lowers the edge", cardTap("E05", "65505,76"), "4,4|floor 11|slope 0,60,60,0|steep false|") & return after tLog
+put ckStart("Shift J on a flat west edge stays at 0", cardTap("E05", "65505,74"), "4,4|floor 11|slope 0,60,60,0|") & return after tLog
+put cardTap("E05", "65363") into tState
+put ckStart("right: the next cell is flat", tState, "5,4|floor 1|slope flat|") & return after tLog
+put cardTap("E05", "51") into tState
+put ckStart("3: a corner slope (twisted)", tState, "5,4|floor 1|slope 0,0,10,0|") & return after tLog
+put "INFO lines flat / with the slopes: " & tLines & " / " & tState & return after tLog
+put ckStart("0 flattens it", cardTap("E05", "48"), "5,4|floor 1|slope flat|") & return after tLog
+put cardTap("E05", "65293") into tState
+put ckHas("Return saves a copy", tState, "SAVED CARDS_YARD_E05.CELLMAP") & return after tLog
+put "/home/igame3d/projects/LIB_EDITOR/maps/cards_yard_e05.cellmap" into tCopy
+put url ("file:" & tCopy) into tMap
+put ck("  ...a version 3 file", tMap contains (return & "version" & tab & "3" & return), true) & return after tLog
+put ck("  ...with the ramp in [slope]", tMap contains ("[slope]" & return & "4,4" & tab & "0 60 60 0"), true) & return after tLog
+delete file tCopy
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas
