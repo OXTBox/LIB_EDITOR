@@ -7,7 +7,11 @@
 ## steps, up the dais, under the clouds, into the wizard's tower, over the glyphs.
 ## The engine's own collision is not used: the map answers every step.
 ## CONTROLS  W S or Up Down: walk   A D or Left Right: turn   Shift: run
-##           R: glyph relief on / off   M: next map (wizard_pool, amazing_couple)
+##           R: glyph relief on / off   M: next map (wizard_pool, amazing_couple, two_rooms)
+##           E: take the door or ladder you stand on (a map pack's doors)
+## PACKS     two_rooms is a map pack (CELLMAP_V3.md): a cellar and a loft stacked in one
+##           place, drawn by CellMap.PackSegments, walked by CellMap.PackWalk (stairs up
+##           through a hole, a sloped ramp to the goal), a ladder by CellMap.PackDoors
 ## NEEDS     ../LIB_BIT/editor (lib_cellmap, tags, fonts, maps), ../LIB_MOCAP/library (the clips)
 ## LESSON    Adding: CellMap.LevelSegments + CellMap.Walk   Result: the drawing is a place
 ## FORMAT    ../LIB_BIT/editor/CELLMAP_V2.md
@@ -25,13 +29,15 @@ constant kGravity = 0.9          -- units a step a step, falling
 constant kWalk = "Animazoo_gangster_walk"
 constant kIdle = "Animazoo_hands_on_hips"
 constant kRun = "Animazoo_Running_-_Jog"
-constant kMaps = "wizard_pool,amazing_couple"
+constant kMaps = "wizard_pool,amazing_couple,two_rooms"
 -- class, colour: what each kind of line means (CELLMAP_V2.md section 6)
 constant kColours = "floor #1F4A5A,wall #7FA8FF,pit #FF5040,water #40E0FF,ceiling #9098A8,green #50E070,sky #B8D8FF,relief #FFFFFF"
 
 local sMap, sTags, sFont, sMapNo, sRelief, sSegCount, sStepMS
 local sClip, sHero, sKeyWas, sTestKeys, sError, sMsg, sMsgUntil, sTicks, sTeleWait
 local sCamX, sCamY, sCamZ
+-- a map pack (empty for a single map): the pack, the place walked, the map stood on and its shift
+local sPack, sPlace, sMapId, sOX, sOZ, sBase
 
 -------------------------------------------------------------------- engine hooks
 
@@ -72,6 +78,7 @@ on Game.OnUpdate
       put not sRelief into sRelief
       E13.BuildLevel
    end if
+   if E13.Pressed(tKeys, "101,69", "door") then E13.TakeDoor
    if E13.Pressed(tKeys, "109,77", "map") then
       add 1 to sMapNo
       if sMapNo > the number of items of kMaps then put 1 into sMapNo
@@ -109,8 +116,18 @@ end arrowKey
 -------------------------------------------------------------------- the map becomes a level
 
 on E13.LoadMap
-   local tFile, r, c, tStart
-   put E13.FindFile("LIB_BIT/editor/maps/" & item sMapNo of kMaps & ".cellmap") into tFile
+   local tFile, r, c, tStart, tName
+   put item sMapNo of kMaps into tName
+   put empty into sPack
+   put 0 into sOX
+   put 0 into sOZ
+   put 0 into sBase
+   put E13.FindFile("LIB_BIT/editor/maps/" & tName & "/" & tName & ".cellpack") into tFile
+   if tFile is not empty then
+      E13.LoadPack tFile
+      exit E13.LoadMap
+   end if
+   put E13.FindFile("LIB_BIT/editor/maps/" & tName & ".cellmap") into tFile
    if tFile is empty then
       put "E13: NO MAP " & toUpper(item sMapNo of kMaps) into sError
       exit E13.LoadMap
@@ -133,6 +150,50 @@ on E13.LoadMap
    put CellMap.CellX(sMap, item 1 of tStart) into sHero["x"]
    put CellMap.CellZ(sMap, item 2 of tStart) into sHero["z"]
    put CellMap.GroundAt(sMap, sTags, sFont, sHero["x"], sHero["z"]) into sHero["y"]
+   E13.StartHero
+   E13.BuildLevel
+   E13.Say "MAP" && toUpper(sMap["meta"]["name"]) & ":" && sSegCount && "LINES", 4000
+   E13.Camera true
+end E13.LoadMap
+
+-- a map pack: its maps stacked in one place, the hero on the start map's @ (CELLMAP_V3.md 4)
+on E13.LoadPack pFile
+   local tAt
+   put CellMap.ReadPack(pFile) into sPack
+   if sPack["problems"] is not empty then
+      put "E13: PACK PROBLEM " & toUpper(line 1 of sPack["problems"]) into sError
+      exit E13.LoadPack
+   end if
+   put CellMap.PackEnter(sPack, sTags, empty, empty) into tAt
+   if tAt is empty then
+      put "E13: NOWHERE TO STAND IN " & toUpper(sPack["meta"]["name"]) into sError
+      exit E13.LoadPack
+   end if
+   put item 1 of tAt into sPlace
+   E13.OnMap sPack["meta"]["start"]
+   put CellMap.FontFromText(CellMap.ReadText(E13.FindFile("LIB_BIT/editor/fonts/" & sMap["meta"]["font"] & ".font.txt"))) into sFont
+   put item 2 of tAt into sHero["x"]
+   put item 3 of tAt into sHero["z"]
+   put item 4 of tAt into sHero["y"]
+   E13.StartHero
+   E13.BuildLevel
+   E13.Say "PACK" && toUpper(sPack["meta"]["name"]) & ":" && sPack["count"] && "MAPS," && sSegCount && "LINES", 4000
+   E13.Camera true
+end E13.LoadPack
+
+-- the hero now stands on map pId of the pack: sMap is that map, sOX sOZ sBase its place in the pack
+on E13.OnMap pId
+   local i
+   put CellMap.PackIndex(sPack, pId) into i
+   if i is 0 then exit E13.OnMap
+   put pId into sMapId
+   put sPack["maps"][i]["map"] into sMap
+   put sPack["maps"][i]["ox"] into sOX
+   put sPack["maps"][i]["oz"] into sOZ
+   put sPack["maps"][i]["base"] into sBase
+end E13.OnMap
+
+on E13.StartHero
    put 0 into sHero["vy"]
    put pi into sHero["yaw"]                  -- facing north, up the map
    put 0 into sHero["speed"]
@@ -140,10 +201,35 @@ on E13.LoadMap
    put 1 into sHero["frame"]
    put "path" into sHero["effect"]
    put 0 into sTeleWait
-   E13.BuildLevel
-   E13.Say "MAP" && toUpper(sMap["meta"]["name"]) & ":" && sSegCount && "LINES", 4000
+end E13.StartHero
+
+-- E on a door cell of a pack: the game plays no climb, it puts the hero at the far end
+on E13.TakeDoor
+   local tCell, tDoor, tAt, tTo
+   if sPack is not an array then exit E13.TakeDoor
+   put E13.Cell() into tCell
+   put line 1 of CellMap.PackDoors(sPack, sMapId, item 1 of tCell, item 2 of tCell) into tDoor
+   if tDoor is empty then exit E13.TakeDoor
+   set the itemDel to tab
+   put CellMap.PackEnter(sPack, sTags, sFont, item 2 of tDoor) into tAt
+   if tAt is empty then exit E13.TakeDoor
+   E13.Say toUpper(item 1 of tDoor) & ":" && toUpper(item 3 of tDoor), 2500
+   put item 2 of tDoor into tTo
+   set the itemDel to ":"
+   E13.OnMap item 1 of tTo
+   set the itemDel to comma
+   put item 1 of tAt into sPlace
+   put item 2 of tAt into sHero["x"]
+   put item 3 of tAt into sHero["z"]
+   put item 4 of tAt into sHero["y"]
+   put 0 into sHero["vy"]
    E13.Camera true
-end E13.LoadMap
+end E13.TakeDoor
+
+-- the cell of the map the hero stands on
+function E13.Cell
+   return CellMap.CellAt(sMap, sHero["x"] - sOX, sHero["z"] - sOZ)
+end E13.Cell
 
 -- the method: every class of segment is one wire mesh, spawned once in its colour
 on E13.BuildLevel
@@ -155,12 +241,20 @@ on E13.BuildLevel
    else
       put empty into tUseFont
    end if
-   put CellMap.LevelSegments(sMap, sTags, tUseFont) into tSegs
+   if sPack is an array then
+      put CellMap.PackSegments(sPack, sPlace, sTags, tUseFont) into tSegs
+   else
+      put CellMap.LevelSegments(sMap, sTags, tUseFont) into tSegs
+   end if
    put the number of lines of tSegs into sSegCount
    repeat for each line tSeg in tSegs
       put item 7 of tSeg into tClass
       if tMesh[tClass] is not an array then put Mesh.New() into tMesh[tClass]
-      put CellMap.SegToEngine(sMap, tSeg) into tE
+      if sPack is an array then
+         put tSeg into tE                    -- a pack's lines come in engine units
+      else
+         put CellMap.SegToEngine(sMap, tSeg) into tE
+      end if
       -- map space has y up; the engine has up = -Y
       put E13.Vertex(tMesh[tClass], tIndex[tClass], item 1 of tE, -(item 2 of tE), item 3 of tE) into tA
       put E13.Vertex(tMesh[tClass], tIndex[tClass], item 4 of tE, -(item 5 of tE), item 6 of tE) into tB
@@ -175,6 +269,7 @@ on E13.BuildLevel
    end repeat
    -- objects: a beacon stands where the map says
    put 1 into tA
+   if sPack is an array then put 1000000 into tA     -- a pack's maps carry no objects yet
    repeat while tA <= CellMap.Count(sMap["objects"])
       put sMap["objects"][tA] into tObj
       if tObj["kind"] is "beacon" then
@@ -203,7 +298,7 @@ end E13.Vertex
 -------------------------------------------------------------------- walking: the map answers every step
 
 on E13.Controls pKeys
-   local tF, tTurn, tStep, tDX, tDZ, tW, tWas, tGround, tCell
+   local tF, tTurn, tStep, tDX, tDZ, tW, tWas, tGround, tCell, tDoor
    put 0 into tF
    put 0 into tTurn
    if 119 is among the items of pKeys or 87 is among the items of pKeys or 65362 is among the items of pKeys then add 1 to tF
@@ -222,7 +317,15 @@ on E13.Controls pKeys
    put sin(sHero["yaw"]) * tStep into tDX
    put cos(sHero["yaw"]) * tStep into tDZ
    put sHero["x"] & comma & sHero["z"] into tWas
-   put CellMap.Walk(sMap, sTags, sFont, sHero["x"], sHero["z"], sHero["y"], tDX, tDZ, 12) into tW
+   if sPack is an array then
+      -- every map of the place answers: stairs, holes and the deck above are plain geometry
+      put CellMap.PackWalk(sPack, sPlace, sTags, sFont, sHero["x"], sHero["z"], sHero["y"], tDX, tDZ, 12) into tW
+      if item 5 of tW is not empty and item 5 of tW is not sMapId then
+         E13.OnMap item 5 of tW
+      end if
+   else
+      put CellMap.Walk(sMap, sTags, sFont, sHero["x"], sHero["z"], sHero["y"], tDX, tDZ, 12) into tW
+   end if
    put item 1 of tW into sHero["x"]
    put item 2 of tW into sHero["z"]
    put item 3 of tW into tGround
@@ -230,7 +333,13 @@ on E13.Controls pKeys
    put sqrt((sHero["x"] - item 1 of tWas) ^ 2 + (sHero["z"] - item 2 of tWas) ^ 2) into sHero["speed"]
    if tF < 0 then put -sHero["speed"] into sHero["speed"]
    -- up a step at once; down by falling
-   if tStep is 0 then put CellMap.StandAt(sMap, sTags, sFont, sHero["x"], sHero["z"], sHero["y"]) into tGround
+   if tStep is 0 then
+      if sPack is an array then
+         put item 1 of CellMap.PackStandAt(sPack, sPlace, sTags, sFont, sHero["x"], sHero["z"], sHero["y"]) into tGround
+      else
+         put CellMap.StandAt(sMap, sTags, sFont, sHero["x"], sHero["z"], sHero["y"]) into tGround
+      end if
+   end if
    if tGround is empty then put sHero["y"] into tGround
    if tGround >= sHero["y"] then
       put tGround into sHero["y"]
@@ -241,7 +350,7 @@ on E13.Controls pKeys
       if sHero["y"] is tGround then put 0 into sHero["vy"]
    end if
    -- what the cell does
-   put CellMap.CellAt(sMap, sHero["x"], sHero["z"]) into tCell
+   put E13.Cell() into tCell
    if sTeleWait > 0 then subtract 1 from sTeleWait
    switch sHero["effect"]
       case "teleport"
@@ -253,7 +362,16 @@ on E13.Controls pKeys
       case "swim"
          E13.Say "SWIMMING", 500
          break
+      case "slide"
+         E13.Say "TOO STEEP", 500
+         break
    end switch
+   if sPack is an array then
+      put line 1 of CellMap.PackDoors(sPack, sMapId, item 1 of tCell, item 2 of tCell) into tDoor
+      set the itemDel to tab
+      if tDoor is not empty then E13.Say "E: TAKE THE" && toUpper(item 1 of tDoor), 300
+      set the itemDel to comma
+   end if
 end E13.Controls
 
 -- links: a teleport link from this cell sends the hero to its target, on the highest level there
@@ -471,7 +589,7 @@ end E13.Say
 
 on E13.ShowHUD
    local tCell, tC, tR
-   put CellMap.CellAt(sMap, sHero["x"], sHero["z"]) into tCell
+   put E13.Cell() into tCell
    put item 1 of tCell into tC
    put item 2 of tCell into tR
    -- changing text at the top (the owner: not at the bottom)
@@ -483,7 +601,7 @@ on E13.ShowHUD
    else
       HUD.Remove "E13.Msg"
    end if
-   HUD.Set "E13.Help", "W S WALK   A D TURN   SHIFT RUN   R RELIEF   M NEXT MAP", gViewLeft + 20, gViewBottom - 30, 11
+   HUD.Set "E13.Help", "W S WALK   A D TURN   SHIFT RUN   R RELIEF   M NEXT MAP   E DOOR / LADDER", gViewLeft + 20, gViewBottom - 30, 11
 end E13.ShowHUD
 
 -------------------------------------------------------------------- helpers and tests
@@ -513,14 +631,15 @@ on E13.TestKeys pKeys
 end E13.TestKeys
 
 -- tests: put the hero in cell pCol,pRow facing pYawDegrees (0 = north, 90 = east), on the
--- ground there (pTop true: on its highest level, a roof or a cloud)
-on E13.TestPlace pCol, pRow, pYawDegrees, pTop
-   put CellMap.CellX(sMap, pCol) into sHero["x"]
-   put CellMap.CellZ(sMap, pRow) into sHero["z"]
+-- ground there (pTop true: on its highest level, a roof or a cloud); pMapId: that map of a pack
+on E13.TestPlace pCol, pRow, pYawDegrees, pTop, pMapId
+   if sPack is an array and pMapId is not empty then E13.OnMap pMapId
+   put CellMap.CellX(sMap, pCol) + sOX into sHero["x"]
+   put CellMap.CellZ(sMap, pRow) + sOZ into sHero["z"]
    if pTop is true then
-      put CellMap.GroundAt(sMap, sTags, sFont, sHero["x"], sHero["z"]) into sHero["y"]
+      put CellMap.GroundAt(sMap, sTags, sFont, sHero["x"] - sOX, sHero["z"] - sOZ) + sBase * CellMap.HU(sMap) into sHero["y"]
    else
-      put item 1 of line 1 of CellMap.Levels(sMap, pCol, pRow) * CellMap.HU(sMap) into sHero["y"]
+      put (item 1 of line 1 of CellMap.Levels(sMap, pCol, pRow) + sBase) * CellMap.HU(sMap) into sHero["y"]
    end if
    put 0 into sHero["vy"]
    if pYawDegrees is a number then put pi - pYawDegrees * pi / 180 into sHero["yaw"]
@@ -531,7 +650,7 @@ end E13.TestPlace
 function E13.State
    local tMsg
    if sMsgUntil is a number and sTicks < sMsgUntil then put sMsg into tMsg
-   return CellMap.CellAt(sMap, sHero["x"], sHero["z"]) & "|y " & round(sHero["y"] / CellMap.HU(sMap)) & "|" & sHero["effect"] & "|" & sHero["anim"] & \
+   return E13.Cell() & "|y " & round(sHero["y"] / CellMap.HU(sMap)) & "|" & sHero["effect"] & "|" & sHero["anim"] & \
          "|step " & round(E13.WalkStep(kWalk), 2) & "/" & round(E13.WalkStep(kRun), 2) & \
          "|" & sMap["meta"]["name"] && sSegCount && "lines," && the number of lines of gSceneObjects && "objects|" & tMsg & "|" & sError & "|tick " & sTicks
 end E13.State

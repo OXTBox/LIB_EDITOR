@@ -1,0 +1,168 @@
+-- E13 Walk The Map with no window (A-92 2): the old scenes of tests/e13_test.sh on the sample maps,
+-- then the map pack two_rooms (CELLMAP_V3.md): stairs up through the loft's hole, the sloped ramp to
+-- the goal, the ladder (E), back down the hole. Run under the lock:
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e13_headless.txt
+local tStub, tS, tState, tT
+put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+delete line 1 of tStub
+create stack "EditorExample"
+set the script of stack "EditorExample" to tStub
+set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/E13_WalkTheMap.livecodescript"), "UTF-8")
+put ck("E13 compiles", the result, empty) & return after tLog
+put the long id of card 1 of stack "EditorExample" into tS
+set the defaultStack to "EditorExample"
+dispatch "E13.TestKeys" to tS with "0"
+dispatch "Game.OnStart" to tS
+dispatch function "E13.State" to tS
+put "INFO start: " & the result & return after tLog
+dispatch "E13.TestPlace" to tS with 12, 10, 0
+dispatch "E13.TestKeys" to tS with "0"
+repeat 5 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("stands still on the start cell", tState, "12,10|y 1|start|idle") & return after tLog
+dispatch "E13.TestPlace" to tS with 10, 13, 270
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 200 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("west down the pool steps to the bottom", tState, "7,13|y -59|swim") & return after tLog
+dispatch "E13.TestPlace" to tS with 7, 13, 90
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 265 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("east up the steps and out of the pool", tState, "12,13|y 1|path") & return after tLog
+dispatch "E13.TestPlace" to tS with 12, 13, 90
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 105 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("east up the dais to the goal", tState, "15,13|y 47|goal") & return after tLog
+dispatch "E13.TestPlace" to tS with 22, 10, 90
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 60 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("the yard wall stops the hero", tState, "23,10|y 1|path|idle") & return after tLog
+dispatch "E13.TestPlace" to tS with 21, 9, 0
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 150 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("the tower wall stops the hero", tState, "21,7|y 1|path|idle") & return after tLog
+dispatch "E13.TestPlace" to tS with 20, 9, 0
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 110 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("through the tower door", tState, "20,6|y 1|path") & return after tLog
+dispatch "E13.TestPlace" to tS with 21, 5, 0
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 30 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("the teleporter sends the hero to a cloud", tState, "15,4|y 231|path") & return after tLog
+dispatch "E13.TestPlace" to tS with 15, 4, 180, true
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 90 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("off the cloud's edge: falls to the yard", tState, "15,7|y 7|") & return after tLog
+dispatch "E13.TestPlace" to tS with 2, 6, 90
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 290 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("the roofed maze hallway, out to the yard", tState, "10,6|y 1|path") & return after tLog
+-- M, M: the third map is the pack
+dispatch "E13.TestKeys" to tS with "109"
+dispatch "Game.OnUpdate" to tS
+dispatch "E13.TestKeys" to tS with "0"
+dispatch "Game.OnUpdate" to tS
+dispatch "E13.TestKeys" to tS with "109"
+dispatch "Game.OnUpdate" to tS
+dispatch "E13.TestKeys" to tS with "0"
+dispatch "Game.OnUpdate" to tS
+dispatch function "E13.State" to tS
+put the result into tState
+put "INFO pack: " & tState & return after tLog
+put ckStart("M, M: the pack two_rooms, on the cellar's @", tState, "5,4|y 1|") & return after tLog
+put ck("both maps drawn as one: 248 lines, the cellar's and the loft's (Python's pack_segments count)", tState contains "two_rooms_cellar 248 lines", true) & return after tLog
+dispatch "E13.TestPlace" to tS with 2, 6, 90, false, "cellar"
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 260 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("pack: east up the stairs, out of the hole onto the loft", tState, "8,6|y 121|path|") & return after tLog
+put ck("  ...and the hero is on the loft map now", tState contains "two_rooms_loft", true) & return after tLog
+dispatch "E13.TestPlace" to tS with 4, 2, 90, false, "loft"
+dispatch "E13.TestKeys" to tS with "119,65505"
+repeat 170 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("pack: up the sloped ramp to the goal on the dais", tState, "8,2|y 181|goal") & return after tLog
+dispatch "E13.TestPlace" to tS with 5, 2, 90, false, "loft"
+dispatch "E13.TestKeys" to tS with "119"
+repeat 70 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("pack: half way up the ramp the hero stands between", tState, "6,2|y ") & return after tLog
+dispatch "E13.TestPlace" to tS with 6, 4, 180, false, "loft"
+dispatch "E13.TestKeys" to tS with "119"
+repeat 190 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("pack: south through the hole, down onto the top stair", tState, "6,6|y 120|climb") & return after tLog
+-- the ladder: E on the cellar's corner cell puts the hero on the loft
+dispatch "E13.TestPlace" to tS with 2, 2, 0, false, "cellar"
+dispatch "E13.TestKeys" to tS with "101"
+dispatch "Game.OnUpdate" to tS
+dispatch "E13.TestKeys" to tS with "0"
+dispatch "Game.OnUpdate" to tS
+dispatch function "E13.State" to tS
+put the result into tState
+put ckStart("E on the ladder: up to the loft floor", tState, "2,2|y 121|") & return after tLog
+put ck("  ...on the loft map", tState contains "two_rooms_loft", true) & return after tLog
+put the milliseconds into tT
+dispatch "E13.TestKeys" to tS with "119"
+repeat 50 times
+  dispatch "Game.OnUpdate" to tS
+end repeat
+put "INFO pack step: " & (the milliseconds - tT) / 50 & " ms" & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
