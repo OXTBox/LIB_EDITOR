@@ -64,7 +64,7 @@ on E06.Build
             put r into sDoor[n]["row"]
             put kShut into sDoor[n]["ceiling"]
             put kOpen into tDraw["ceiling"][r][c]
-            put 1 into tDraw["green"][r][c]
+            put 2 into tDraw["from"][r][c]
          end if
          add 1 to c
       end repeat
@@ -119,11 +119,11 @@ on E06.Doors
    end repeat
 end E06.Doors
 
--- the door's ceiling in the map (its top stays at 101: green fills the rest) and its box on screen
+-- the door's ceiling in the map (From Ceiling: solid from it up to the map's top, 101) and its box on screen
 on E06.SetDoor pN, pCeiling
    put pCeiling into sDoor[pN]["ceiling"]
    CellMap.Set sMap, "ceiling", sDoor[pN]["col"], sDoor[pN]["row"], pCeiling
-   CellMap.Set sMap, "green", sDoor[pN]["col"], sDoor[pN]["row"], kOpen + kShut - pCeiling
+   CellMap.Set sMap, "from", sDoor[pN]["col"], sDoor[pN]["row"], 2       -- From Ceiling: solid from the ceiling up to the map's top (101)
    SetObjectPosition sDoor[pN]["key"], CellMap.CellX(sMap, sDoor[pN]["col"]), -(pCeiling + kOpen / 2) * CellMap.HU(sMap), CellMap.CellZ(sMap, sDoor[pN]["row"])
 end E06.SetDoor
 
