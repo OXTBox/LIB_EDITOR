@@ -5,7 +5,7 @@
 
 cards_yard.cellmap   a west room and an east room (version 2): the @ start, two doors (+),
                      a pressure plate and an anti plate linked to the south door, a switch for the middle door, a teleporter
-                     pair, a stepped pool (deep water), a monster spawner, three camera squares,
+                     pair, a stepped pool (deep water) with a tide, a monster spawner, three camera squares,
                      a ~ tunnel without a roof yet. E04-E11 and E15 use it; E12 finds no problem in it.
 cards_broken.cellmap a map with a problem of every kind the checker (E12) knows that needs no start.
 cards_lost.cellmap   E12's second broken map: it has a start, so a sealed room shows as unreachable;
@@ -88,6 +88,7 @@ def yard():
         dict(id='cam2', kind='camera', at='1.6,1.6', facing=135, above=220, props='mode=target'),
         dict(id='cam3', kind='camera', at='2,2', facing=90, above=260,
              props='mode=flyby;path=2,2 13,2 13,9 2,9;steps=120'),
+        dict(id='tide1', kind='tide', at='11,5', facing=0, above=0, props='low=-50;high=0;period=240'),
     ]
     return m
 

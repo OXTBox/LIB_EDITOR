@@ -84,7 +84,7 @@ an editor GUI (BitEditor, or a separate tool where the data is different, like A
 | E06 | A door that rises when the hero is near | effects in play | Forge platforms |
 | E07 | A pad that opens a door elsewhere (DONE 18 Nov: `tests/e07_headless.txt`, 13 checks) | links: trigger -> target | Forge tags, TRLE triggers |
 | E08 | Teleporter pairs (DONE 18 Nov: `examples/E08_Teleporters`, `tests/e08_headless.txt`, 9 checks; arriving is not entering, so no bounce) | links between cells | Forge teleporter |
-| E09 | Water with a tide | animated levels | Forge liquids |
+| E09 | Water with a tide (DONE 18 Nov: `examples/E09_Tide`, `tests/e09_headless.txt`, 10 checks; `[objects]` kind `tide` with low / high / period) | animated levels | Forge liquids |
 | E10 | A spawner with initial / min / max / % | spawn rules | Forge item parameters |
 | E11 | Camera squares | cameras from data | TRLE cameras |
 | E12 | The checker: list problems, jump to each (DONE 18 Nov: `examples/E12_Checker`, `tests/e12_headless.txt`, 15 checks; maps `cards_broken` + `cards_lost`) | validation | Forge errors, TRLE finders |
