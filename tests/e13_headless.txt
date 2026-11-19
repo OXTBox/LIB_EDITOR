@@ -79,7 +79,7 @@ repeat 30 times
 end repeat
 dispatch function "E13.State" to tS
 put the result into tState
-put ckStart("the teleporter sends the hero to a cloud", tState, "15,4|y 231|path") & return after tLog
+put ckStart("the teleporter sends the hero to a cloud", tState, "15,4|y 265|path") & return after tLog
 dispatch "E13.TestPlace" to tS with 15, 4, 180, true
 dispatch "E13.TestKeys" to tS with "119,65505"
 repeat 90 times
