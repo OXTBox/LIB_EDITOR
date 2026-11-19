@@ -32,6 +32,10 @@
 ##   the items above, plus Data and Games filled from the Data folder each time it opens. A pick
 ##   on a folder shows it in the Library list; only "Explore here..." opens Explorer. Without
 ##   LIB_MENU the Library menu is kMenus' own, as before.
+## MENU BAR (18 Nov 2026, the owner's design): "graphic labels, one popup button to rule them all".
+##   The titles are green graphics; a mouse down fills ONE popup button (LIB_MENU's Menu.PopFor,
+##   or the same button made here without LIB_MENU) in plain black on white. Ctrl + letter: the
+##   shortcut items (commandKeyDown).
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
 ######################################################################################
 
@@ -167,10 +171,14 @@ end Ig.BuildToolbar
 -- the menu bar, Macintosh order: File Edit View Library Mesh Dev Window Help; items as in
 -- iGame3D (kMenus: menus split by #, items by ;, ~ = a submenu item, /X = its shortcut letter,
 -- ( = not working yet, so dimmed; ... = it opens a window). The View menu ticks what is on.
+-- The owner (18 Nov): "graphic labels, one popup button to rule them all". Each title is a green
+-- graphic (menuTitle_File ...) holding its menu's text (cMenuText); a mouse down on it fills the
+-- ONE popup button of the card (LIB_MENU's Menu.PopFor, else Ig.PopButton here) and pops it under
+-- the title. A pick comes back as menuPopPick (or the local popup's menuPick) to Ig.MenuBar.
+-- No pulldown buttons any more: a dropdown took its button's green on Windows.
 on Ig.BuildMenus
-   local tMenu, tName, tText, tGroup, x
+   local tMenu, tName, tText, tGroup, tT
    put the short id of group "Ig3dTools" into tGroup
-   put 6 into x
    set the itemDel to "#"
    repeat for each item tMenu in kMenus
       put char 1 to offset("=", tMenu) - 1 of tMenu into tName
@@ -179,26 +187,111 @@ on Ig.BuildMenus
       replace "~" with tab in tText
       if tName is "View" then put Ig.TickView(tText) into tText
       if tName is "Library" and sLibMenu["on"] is true and sLibMenu["text"] is not empty then put sLibMenu["text"] into tText
-      if there is not a button ("menu_" & tName) of group id tGroup then
-         Ig.Template "button"
-         create button ("menu_" & tName) in group id tGroup
+      if there is a button ("menu_" & tName) of group id tGroup then delete button ("menu_" & tName) of group id tGroup   -- the old pulldowns
+      put "menuTitle_" & tName into tT
+      if there is not a graphic tT of group id tGroup then
+         Ig.Template "graphic"
+         create graphic tT in group id tGroup
       end if
-      set the style of button ("menu_" & tName) of group id tGroup to "menu"
-      set the menuMode of button ("menu_" & tName) of group id tGroup to "pulldown"
-      set the label of button ("menu_" & tName) of group id tGroup to tName
-      set the text of button ("menu_" & tName) of group id tGroup to tText
-      set the textColor of button ("menu_" & tName) of group id tGroup to kInk
-      set the backgroundColor of button ("menu_" & tName) of group id tGroup to kPaper   -- the dropdown: ink on dark, never ink on white
-      set the showBorder of button ("menu_" & tName) of group id tGroup to false
-      set the opaque of button ("menu_" & tName) of group id tGroup to false
-      set the traversalOn of button ("menu_" & tName) of group id tGroup to false
-      set the textSize of button ("menu_" & tName) of group id tGroup to 12
-      set the script of button ("menu_" & tName) of group id tGroup to "on menuPick pItem" & cr & "   Ig.MenuBar the label of me, pItem" & cr & "end menuPick" & \
-            cr & "on mouseDown" & cr & "   Ig.MenuOpening the label of me, the long id of me" & cr & "   pass mouseDown" & cr & "end mouseDown"
+      set the style of graphic tT of group id tGroup to "rectangle"
+      set the showName of graphic tT of group id tGroup to true
+      set the label of graphic tT of group id tGroup to tName
+      set the cMenu of graphic tT of group id tGroup to tName
+      set the cMenuText of graphic tT of group id tGroup to tText
+      set the textColor of graphic tT of group id tGroup to kInk
+      set the foregroundColor of graphic tT of group id tGroup to kInk
+      set the backgroundColor of graphic tT of group id tGroup to "#0A1A0E"   -- the strip's own colour
+      set the opaque of graphic tT of group id tGroup to true    -- filled: an empty graphic takes clicks on its outline only
+      set the lineSize of graphic tT of group id tGroup to 0
+      set the textSize of graphic tT of group id tGroup to 12
+      set the script of graphic tT of group id tGroup to "on mouseDown" & cr & "   Ig.MenuDown the long id of me" & cr & "end mouseDown"
    end repeat
    set the itemDel to comma
    Ig.Layout
 end Ig.BuildMenus
+
+-- a mouse down on a menu title: its menu now (the Library filled from LIB_MENU), in the one popup
+on Ig.MenuDown pTitle
+   local tMenu, tText, tBtn, tErr
+   put the cMenu of pTitle into tMenu
+   Ig.MenuOpening tMenu, pTitle
+   put the cMenuText of pTitle into tText
+   if Ig.UseMenus() then
+      Menu.PopFor pTitle, tText
+      if the result is empty or the result is "no screen" then exit Ig.MenuDown
+   end if
+   put Ig.PopFill(pTitle, tText) into tBtn
+   try
+      popup tBtn at the left of pTitle, the bottom of pTitle
+   catch tErr
+      -- no screen (a headless test): the popup is filled, nothing to show it on
+   end try
+end Ig.MenuDown
+
+-- the pick from LIB_MENU's one popup (Menu.PopFor sends it to the title, the title passes it here)
+on menuPopPick pMenu, pItem
+   Ig.MenuBar pMenu, pItem
+end menuPopPick
+
+-- without LIB_MENU: the same one popup button, made here the same way (plain colours, set on the
+-- template BEFORE create and on the button), filled for pTitle; its long id
+function Ig.PopFill pTitle, pText
+   local tB
+   if there is not a button "LIB_MENU_Popup" of this card then
+      lock messages
+      reset the templateButton
+      set the textColor of the templateButton to "0,0,0"
+      set the backgroundColor of the templateButton to "255,255,255"
+      set the hiliteColor of the templateButton to "51,153,255"
+      set the borderColor of the templateButton to "128,128,128"
+      set the style of the templateButton to "menu"
+      set the menuMode of the templateButton to "popup"
+      set the visible of the templateButton to false
+      create button "LIB_MENU_Popup"
+      reset the templateButton
+      unlock messages
+   end if
+   put the long id of button "LIB_MENU_Popup" of this card into tB
+   set the style of tB to "menu"
+   set the menuMode of tB to "popup"
+   set the visible of tB to false
+   set the textColor of tB to "0,0,0"
+   set the backgroundColor of tB to "255,255,255"
+   set the hiliteColor of tB to "51,153,255"
+   set the borderColor of tB to "128,128,128"
+   set the traversalOn of tB to false
+   if the script of tB is empty then set the script of tB to "on menuPick pItem" & cr & "   Ig.MenuBar the cMenuName of me, pItem" & cr & "end menuPick"
+   set the text of tB to pText
+   set the cMenuName of tB to the cMenu of pTitle
+   set the cMenuTarget of tB to the long id of pTitle
+   set the cMenuFile of tB to false
+   return tB
+end Ig.PopFill
+
+-- the shortcuts (/N, /S, /0 ...): Ctrl (Command on a Mac) + the letter picks that item, as the old
+-- menu buttons did. Dimmed items (() are skipped; nothing found: passed on.
+on commandKeyDown pKey
+   local tHit
+   put Ig.ShortcutFor(pKey) into tHit
+   if tHit is empty then pass commandKeyDown
+   set the itemDel to "|"
+   Ig.MenuBar item 1 of tHit, item 2 to -1 of tHit
+end commandKeyDown
+
+-- the shortcut letter's item for pKey, as Menu|Item (tests and the help)
+function Ig.ShortcutFor pKey
+   local tMenu, tName, tLine
+   set the itemDel to "#"
+   repeat for each item tMenu in kMenus
+      put char 1 to offset("=", tMenu) - 1 of tMenu into tName
+      replace ";" with cr in tMenu
+      repeat for each line tLine in char offset("=", tMenu) + 1 to -1 of tMenu
+         if char 1 of tLine is "~" then delete char 1 of tLine
+         if char -2 of tLine is "/" and char -1 of tLine is pKey and char 1 of tLine is not "(" then return tName & "|" & tLine
+      end repeat
+   end repeat
+   return empty
+end Ig.ShortcutFor
 
 -- the menu titles in order
 function Ig.MenuNames
@@ -317,10 +410,10 @@ on Ig.Layout
    set the rect of graphic "Ig3dMenuBar" of group id tG to -1, -1, tW + 1, kBarH
    put 8 into x
    repeat for each line tName in Ig.MenuNames()
-      put "menu_" & tName into tB
-      if there is not a button tB of group id tG then next repeat
-      put max(the formattedWidth of button tB of group id tG, the number of chars of tName * 7 + 14) into k
-      set the rect of button tB of group id tG to x, 1, x + k, kBarH - 1
+      put "menuTitle_" & tName into tB
+      if there is not a graphic tB of group id tG then next repeat
+      put the number of chars of tName * 7 + 14 into k
+      set the rect of graphic tB of group id tG to x, 1, x + k, kBarH - 1
       add k + 2 to x
    end repeat
    -- the tools: ]< (or ]>) first, then the buttons, in rows or columns along one side
@@ -463,12 +556,12 @@ end Ig.TabDown
 -- A pick on a folder shows it in the Library list; "Explore here..." alone opens Explorer.
 -- Without LIB_MENU (or the projects folder) the menu is kMenus' Library, exactly as before.
 
--- a menu title was pressed: the Library menu is filled now
-on Ig.MenuOpening pMenu, pButton
+-- a menu title was pressed: the Library menu is filled now (into the title's cMenuText)
+on Ig.MenuOpening pMenu, pTitle
    local tText
    if pMenu is not "Library" then exit Ig.MenuOpening
    put Ig.LibraryMenuText() into tText
-   if tText is not empty then set the text of pButton to tText
+   if tText is not empty then set the cMenuText of pTitle to tText
 end Ig.MenuOpening
 
 -- the Library menu's text from LIB_MENU, or empty (then the button keeps kMenus' Library)

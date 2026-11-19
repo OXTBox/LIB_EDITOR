@@ -34,3 +34,18 @@ It is not in the game launcher (that one is for games only).
 - What a pick does is in `Functions/ig3deditor_functions.livecodescript` beside the menu file (copy it the same way).
 - Without LIB_MENU (a copy with no projects folder above it), the Library menu is the old one.
 - Test: `OXT-BEYOND/tests/t51_editor_library_menu.txt`.
+
+## The menu bar: green graphics, one popup (18 Nov 2026)
+
+- Your design: "graphic labels, one popup button to rule them all".
+- The titles (File, Edit, View, Library ...) are green graphics on the menu bar strip now.
+  There are no pulldown menu buttons any more. Their lists came out "extreme green" on Windows.
+- A mouse down on a title fills ONE hidden popup button with that menu and pops it under the title.
+- That popup is plain black on white. Its colours are set on the template before it is made,
+  and again on the button, so it never takes the stack's green.
+- With LIB_MENU there, the popup is LIB_MENU's (`Menu.PopFor`). Without it, the editor makes the same
+  button itself. Either way there is only one.
+- A pick goes to the same place as before (`Ig.Menu`); the Library still goes through LIB_MENU first.
+- Ctrl + the letter still picks the items with a shortcut (/N New Level, /S Save Level, /Z Undo ...).
+- Not seen on screen yet: the tests run with no window, so they check the colours and the picks,
+  not what the popup looks like. Please look at it on Windows.
