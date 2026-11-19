@@ -13,4 +13,21 @@ The owner's brief (About_Lib_editor.txt, 2026-11-14):
 | `examples/` | one method each, as small Vibecode3D game cards (E01, E02 ...): lessons for the engine first, tools later |
 | `tests/headless.sh` | run an example with no window: `tests/headless.sh E01_Blocks E01 "0:5"` |
 
+## The cards (each one method, keys in its header)
+
+| Card | What it shows | Test |
+|---|---|---|
+| E01 Blocks | a cellmap's cells as boxes | `tests/headless.sh E01_Blocks E01 "0:5"` |
+| E02 Raise and lower | a cursor; Q / A raise or lower one cell | `tests/headless.sh` |
+| E03 Elevation colours | the map coloured by height | `tests/e03_headless.txt` |
+| E04 Ceilings | W / S lower a roof | `tests/e04_headless.txt` |
+| E05 Slopes | lift one edge of a cell | `tests/e05_headless.txt` |
+| E06 A rising door | a door that opens when the hero comes | `tests/e06_headless.txt` |
+| E07 A pad opens a door | links: a plate here, a door there | `tests/e07_headless.txt` |
+| E08 Teleporter pairs | step on a pad, stand on its partner; no bouncing back | `tests/e08_headless.txt` |
+| E13 Walk the map | the whole map as a level, walked | `tests/e13_headless.txt` |
+
+The `.txt` tests run with no window:
+`cd ~/projects/OXT-BEYOND/tests && python3 -I oxt_headless.py --engine both ~/projects/LIB_EDITOR/tests/e08_headless.txt`
+
 Data: the `.cellmap` format and its library live in `../LIB_BIT/editor` (the BitEditor).
