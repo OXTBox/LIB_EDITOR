@@ -1,0 +1,92 @@
+-- E12 The Checker with no window: the problems of the two broken maps, the camera over each,
+-- next / back / next map, and the yard with none.
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e12_headless.txt
+local tState, tList
+put ck("E12 compiles", cardOpen("E12_Checker.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E12") into tState
+put ck("opens on the broken map: no start first, the whole map in view", tState, "cards_broken|1 of 8|start |cam 0,700,650|") & return after tLog
+put cardFn("E12.List") into tList
+put ck("its list: no start, three bad links, four bad slopes", the number of lines of tList, 8) & return after tLog
+put ck("  a link with no target", tList contains "link" & tab & "cards_broken" & tab & "3,5" & tab & "a teleport link with no target", true) & return after tLog
+put ck("  a link to a camera nobody placed", tList contains "2,2" & tab & "a camera link to @cam9: no such object", true) & return after tLog
+put ck("N: the camera jumps over the pad whose door is off the map", cardTap("E12", "110"), "cards_broken|2 of 8|link 4,5|cam -114,420,456|") & return after tLog
+put ck("Space does the same", cardTap("E12", "32"), "cards_broken|3 of 8|link 2,2|cam -266,420,228|") & return after tLog
+put ck("B: back one", cardTap("E12", "98"), "cards_broken|2 of 8|link 4,5|cam -114,420,456|") & return after tLog
+put ck("B twice more wraps round to the last", cardTap("E12", "98", 2), "cards_broken|8 of 8|slope-roof 7,6|cam 114,420,532|") & return after tLog
+put ck("M: the second broken map, its first problem", cardTap("E12", "109"), "cards_lost|1 of 3|unreachable 8,2|cam 114,420,228|") & return after tLog
+put cardFn("E12.List") into tList
+put ck("  a teleporter with no partner", tList contains "partner" & tab & "cards_lost" & tab & "6,2" & tab & "a teleporter to 3,6 with no way back", true) & return after tLog
+put ck("  a teleporter tile with no link", tList contains "partner" & tab & "cards_lost" & tab & "4,5" & tab & "a teleporter tile with no link", true) & return after tLog
+put ck("M: the yard, nothing wrong, the whole map in view", cardTap("E12", "109"), "cards_yard|0 of 0| |cam 0,700,650|") & return after tLog
+put ck("N on a clean map does nothing", cardTap("E12", "110"), "cards_yard|0 of 0| |cam 0,700,650|") & return after tLog
+put ck("M wraps round to the first map", cardTap("E12", "109"), "cards_broken|1 of 8|start |cam 0,700,650|") & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas

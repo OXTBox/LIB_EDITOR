@@ -87,7 +87,7 @@ an editor GUI (BitEditor, or a separate tool where the data is different, like A
 | E09 | Water with a tide | animated levels | Forge liquids |
 | E10 | A spawner with initial / min / max / % | spawn rules | Forge item parameters |
 | E11 | Camera squares | cameras from data | TRLE cameras |
-| E12 | The checker: list problems, jump to each | validation | Forge errors, TRLE finders |
+| E12 | The checker: list problems, jump to each (DONE 18 Nov: `examples/E12_Checker`, `tests/e12_headless.txt`, 15 checks; maps `cards_broken` + `cards_lost`) | validation | Forge errors, TRLE finders |
 | E13 | Walk the map with Amazing Couple's hero (DONE 2026-11-14: a version 2 cellmap as a level, `CellMap.LevelSegments` + `CellMap.Walk`; `tests/e13_test.sh`) | preview | Forge visual mode, TRLE preview |
 | E14 | Stacked maps: a room above a room | base heights | TRLE stacked rooms |
 | E15 | Undo | an undo stack | both |

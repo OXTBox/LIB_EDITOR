@@ -25,6 +25,7 @@ The owner's brief (About_Lib_editor.txt, 2026-11-14):
 | E06 A rising door | a door that opens when the hero comes | `tests/e06_headless.txt` |
 | E07 A pad opens a door | links: a plate here, a door there | `tests/e07_headless.txt` |
 | E08 Teleporter pairs | step on a pad, stand on its partner; no bouncing back | `tests/e08_headless.txt` |
+| E12 The checker | lists a map's problems, N jumps the camera to each; M next map | `tests/e12_headless.txt` |
 | E13 Walk the map | the whole map as a level, walked | `tests/e13_headless.txt` |
 
 The `.txt` tests run with no window:

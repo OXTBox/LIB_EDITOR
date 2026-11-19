@@ -7,7 +7,9 @@ cards_yard.cellmap   a west room and an east room (version 2): the @ start, two 
                      a pressure plate and an anti plate linked to the south door, a switch for the middle door, a teleporter
                      pair, a stepped pool (deep water), a monster spawner, three camera squares,
                      a ~ tunnel without a roof yet. E04-E11 and E15 use it; E12 finds no problem in it.
-cards_broken.cellmap a map with a problem of every kind the checker (E12) knows.
+cards_broken.cellmap a map with a problem of every kind the checker (E12) knows that needs no start.
+cards_lost.cellmap   E12's second broken map: it has a start, so a sealed room shows as unreachable;
+                     a one-way teleporter and a teleporter tile (T) with no link.
 Written through LIB_BIT/editor/python/cellmap.py, so the files are exactly what the libraries write.
 """
 import os, sys
@@ -36,6 +38,16 @@ BROKEN = [
     '#.T......#',
     '#........#',
     '##########',
+]
+
+LOST = [
+    '############',
+    '#.@..T#....#',
+    '#.....#....#',
+    '#.....######',
+    '#..T.......#',
+    '#..........#',
+    '############',
 ]
 
 
@@ -99,10 +111,18 @@ def broken():
     return m
 
 
+def lost():
+    m = build(LOST, 'cards_lost')
+    m['links'] = [
+        dict(**{'from': '6,2', 'type': 'teleport', 'to': '3,6', 'note': 'a teleporter with no way back'}),
+    ]
+    return m
+
+
 if __name__ == '__main__':
     out = os.path.join(HERE, '..', 'maps')
     os.makedirs(out, exist_ok=True)
-    for m in (yard(), broken()):
+    for m in (yard(), broken(), lost()):
         p = os.path.join(out, m['meta']['name'] + '.cellmap')
         cm.write_map(m, p)
         print('wrote', os.path.relpath(p, os.path.join(HERE, '..')))
