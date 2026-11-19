@@ -90,7 +90,7 @@ an editor GUI (BitEditor, or a separate tool where the data is different, like A
 | E12 | The checker: list problems, jump to each (DONE 18 Nov: `examples/E12_Checker`, `tests/e12_headless.txt`, 15 checks; maps `cards_broken` + `cards_lost`) | validation | Forge errors, TRLE finders |
 | E13 | Walk the map with Amazing Couple's hero (DONE 2026-11-14: a version 2 cellmap as a level, `CellMap.LevelSegments` + `CellMap.Walk`; `tests/e13_test.sh`) | preview | Forge visual mode, TRLE preview |
 | E14 | Stacked maps: a room above a room | base heights | TRLE stacked rooms |
-| E15 | Undo | an undo stack | both |
+| E15 | Undo (DONE 18 Nov: `examples/E15_Undo`, `tests/e15_headless.txt`, 13 checks; a stack of changes, not copies) | an undo stack | both |
 
 ## 5. Then the GUIs
 - The map tool (BitEditor, grown with E02-E15 as tools) - Forge/TRLE-like.
