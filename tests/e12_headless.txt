@@ -5,22 +5,22 @@ local tState, tList
 put ck("E12 compiles", cardOpen("E12_Checker.livecodescript"), empty) & return after tLog
 set the defaultStack to "EditorExample"
 put cardStart("E12") into tState
-put ck("opens on the broken map: no start first, the whole map in view", tState, "cards_broken|1 of 8|start |cam 0,700,650|") & return after tLog
+put ck("opens on the broken map: no start first, the whole map in view", tState, "cards_broken|1 of 8|start |cam 0,700,-650|") & return after tLog
 put cardFn("E12.List") into tList
 put ck("its list: no start, three bad links, four bad slopes", the number of lines of tList, 8) & return after tLog
 put ck("  a link with no target", tList contains "link" & tab & "cards_broken" & tab & "3,5" & tab & "a teleport link with no target", true) & return after tLog
 put ck("  a link to a camera nobody placed", tList contains "2,2" & tab & "a camera link to @cam9: no such object", true) & return after tLog
-put ck("N: the camera jumps over the pad whose door is off the map", cardTap("E12", "110"), "cards_broken|2 of 8|link 4,5|cam -114,420,456|") & return after tLog
-put ck("Space does the same", cardTap("E12", "32"), "cards_broken|3 of 8|link 2,2|cam -266,420,228|") & return after tLog
-put ck("B: back one", cardTap("E12", "98"), "cards_broken|2 of 8|link 4,5|cam -114,420,456|") & return after tLog
-put ck("B twice more wraps round to the last", cardTap("E12", "98", 2), "cards_broken|8 of 8|slope-roof 7,6|cam 114,420,532|") & return after tLog
-put ck("M: the second broken map, its first problem", cardTap("E12", "109"), "cards_lost|1 of 3|unreachable 8,2|cam 114,420,228|") & return after tLog
+put ck("N: the camera jumps over the pad whose door is off the map", cardTap("E12", "110"), "cards_broken|2 of 8|link 4,5|cam -114,420,-304|") & return after tLog
+put ck("Space does the same", cardTap("E12", "32"), "cards_broken|3 of 8|link 2,2|cam -266,420,-532|") & return after tLog
+put ck("B: back one", cardTap("E12", "98"), "cards_broken|2 of 8|link 4,5|cam -114,420,-304|") & return after tLog
+put ck("B twice more wraps round to the last", cardTap("E12", "98", 2), "cards_broken|8 of 8|slope-roof 7,6|cam 114,420,-228|") & return after tLog
+put ck("M: the second broken map, its first problem", cardTap("E12", "109"), "cards_lost|1 of 3|unreachable 8,2|cam 114,420,-532|") & return after tLog
 put cardFn("E12.List") into tList
 put ck("  a teleporter with no partner", tList contains "partner" & tab & "cards_lost" & tab & "6,2" & tab & "a teleporter to 3,6 with no way back", true) & return after tLog
 put ck("  a teleporter tile with no link", tList contains "partner" & tab & "cards_lost" & tab & "4,5" & tab & "a teleporter tile with no link", true) & return after tLog
-put ck("M: the yard, nothing wrong, the whole map in view", cardTap("E12", "109"), "cards_yard|0 of 0| |cam 0,700,650|") & return after tLog
-put ck("N on a clean map does nothing", cardTap("E12", "110"), "cards_yard|0 of 0| |cam 0,700,650|") & return after tLog
-put ck("M wraps round to the first map", cardTap("E12", "109"), "cards_broken|1 of 8|start |cam 0,700,650|") & return after tLog
+put ck("M: the yard, nothing wrong, the whole map in view", cardTap("E12", "109"), "cards_yard|0 of 0| |cam 0,700,-650|") & return after tLog
+put ck("N on a clean map does nothing", cardTap("E12", "110"), "cards_yard|0 of 0| |cam 0,700,-650|") & return after tLog
+put ck("M wraps round to the first map", cardTap("E12", "109"), "cards_broken|1 of 8|start |cam 0,700,-650|") & return after tLog
 delete stack "EditorExample"
 return tLog
 --HANDLERS--

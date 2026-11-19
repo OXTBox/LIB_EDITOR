@@ -98,25 +98,26 @@ on E12.Goto
    put item 3 of E12.Line() into tAt
    set the itemDel to comma
    if tAt is empty or sNo is 0 then
-      E12.Cam 0, 700, 650, 650
+      E12.Cam 0, 0, 700, 650
       SetObjectPosition sMark, 0, 5000, 0
    else
       put CellMap.CellX(sMap, item 1 of tAt) into tX
       put CellMap.CellZ(sMap, item 2 of tAt) into tZ
       put CellMap.GroundAt(sMap, sTags, empty, tX, tZ) into tY
       if tY is empty then put 0 into tY
-      E12.Cam tX, 420, tZ + 380, 380
+      E12.Cam tX, tZ, 420, 380
       SetObjectPosition sMark, tX, -tY - 3, tZ
    end if
    E12.ShowHUD
 end E12.Goto
 
--- the camera at pX, pY (up), pZ, looking north and down at a point pBack units north of it
-on E12.Cam pX, pY, pZ, pBack
-   put round(pX) & comma & round(pY) & comma & round(pZ) into sCam
-   Engine.SetCam pX, pY, pZ
+-- the camera pUp high and pBack north of the point pTX, pTZ, looking south and down at it.
+-- (Engine.SetCam takes the camera's position turned round, as E13 does: -x, -y, -z, up is -y)
+on E12.Cam pTX, pTZ, pUp, pBack
+   put round(pTX) & comma & round(pUp) & comma & round(pTZ - pBack) into sCam
+   Engine.SetCam -pTX, pUp, pBack - pTZ
    put 0 into gCameraYaw
-   put -atan2(pY, pBack) into gCameraPitch
+   put -atan2(pUp, pBack) into gCameraPitch
 end E12.Cam
 
 function E12.Line
