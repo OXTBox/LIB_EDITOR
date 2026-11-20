@@ -37,3 +37,9 @@ The `.txt` tests run with no window:
 `cd ~/projects/OXT-BEYOND/tests && python3 -I oxt_headless.py --engine both ~/projects/LIB_EDITOR/tests/e08_headless.txt`
 
 Data: the `.cellmap` format and its library live in `../LIB_BIT/editor` (the BitEditor).
+
+## Licence
+
+GPL-3.0 (see `LICENSE`), because the xTalk work here is built on the GPL-licensed LiveCode Community 9 engine. Copyright (c) 2026 xAction.
+
+The Python files (`.py`) and other material that is not xTalk are also offered under the MIT licence, Copyright (c) 2026 xAction: you may use them under either licence.
