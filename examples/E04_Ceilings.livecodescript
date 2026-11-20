@@ -66,7 +66,8 @@ on E04.BuildAll
    end repeat
 end E04.BuildAll
 
--- one cell: its ground block, and its roof (a grey slab from the ceiling up `green`, at least 4 units)
+-- one cell: its ground block, and its roof (a grey slab from the ceiling up to its top: thick when
+-- the cell is From Ceiling; at least 4 units)
 on E04.BuildCell pC, pR
    local tC, tHU, tCell, tTall, tThick
    if sBlock[pR][pC] is not empty then Entity.Kill sBlock[pR][pC]
