@@ -5,14 +5,14 @@ local tState
 put ck("E07 compiles", cardOpen("E07_PadOpensDoor.livecodescript"), empty) & return after tLog
 set the defaultStack to "EditorExample"
 put cardStart("E07") into tState
-put ck("start on the @, both doors shut", tState, "3,5|y 1|path|door 8,5 1|door 8,8 1|||") & return after tLog
+put ck("start on the @, both doors shut", tState, "3,5|y 1|path|door 8,5 1|door 8,8 1||") & return after tLog
 get cardDo("E07.TestPlace", 7, 8)
 put ckStart("beside the south door it stays shut (no link from here)", cardRun("E07", "0", 20), "7,8|y 1|path|door 8,5 1|door 8,8 1|") & return after tLog
 get cardDo("E07.TestPlace", 2, 8)
 put ck("east onto the plate: the far door starts to open", cardRun("E07", "100", 30), "3,8|y 1|path|door 8,5 1|door 8,8 1||") & return after tLog
-put ck("  ...", cardRun("E07", "100", 10), "4,8|y 1|trigger|door 8,5 1|door 8,8 25|PAD: THE PLATE OPENS THE SOUTH DOOR|") & return after tLog
-put ckStart("  ...on through the open door", cardRun("E07", "100", 110), "9,8|y 1|path|door 8,5 1|door 8,8 100|") & return after tLog
-put ckStart("onto the anti plate: the door shuts behind", cardRun("E07", "100", 50), "10,8|y 1|trigger|door 8,5 1|door 8,8 ") & return after tLog
+put ck("  ...", cardRun("E07", "100", 10), "4,8|y 1|trigger|door 8,5 1|door 8,8 9|PAD: THE PLATE OPENS THE SOUTH DOOR|") & return after tLog
+put ckStart("  ...on through the open door", cardRun("E07", "100", 130), "9,8|y 1|path|door 8,5 1|door 8,8 100|") & return after tLog
+put ckStart("onto the anti plate: the door shuts behind", cardRun("E07", "100", 30), "10,8|y 1|trigger|door 8,5 1|door 8,8 ") & return after tLog
 put ck("  ...all the way", cardRun("E07", "0", 30), "10,8|y 1|trigger|door 8,5 1|door 8,8 1|ANTI: THIS PLATE SHUTS IT AGAIN|") & return after tLog
 put ckStart("walking back west, the shut door stops the hero", cardRun("E07", "97", 80), "9,8|y 1|path|door 8,5 1|door 8,8 1|") & return after tLog
 get cardDo("E07.TestPlace", 6, 2)

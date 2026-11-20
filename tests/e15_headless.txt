@@ -1,0 +1,90 @@
+-- E15 Undo with no window: raise and lower cells, undo and redo one change a press, a new change
+-- forgets the redo stack, and twenty-eight changes undone all the way give back the map as opened.
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/e15_headless.txt
+local tState
+put ck("E15 compiles", cardOpen("E15_Undo.livecodescript"), empty) & return after tLog
+set the defaultStack to "EditorExample"
+put cardStart("E15") into tState
+put ck("start: cursor on 2,2, flat ground, nothing to undo", tState, "2,2|floor 1|undo 0|redo 0|changed 0||") & return after tLog
+get cardTap("E15", "65363")
+put ck("right, then Q three times: 30 hu, three changes", cardTap("E15", "113", 3), "3,2|floor 30|undo 3|redo 0|changed 1|FLOOR 3,2 20 TO 30|") & return after tLog
+put ck("U twice: back to 10", cardTap("E15", "117", 2), "3,2|floor 10|undo 1|redo 2|changed 1|UNDO FLOOR 3,2 BACK TO 10|") & return after tLog
+put ck("R: forward to 20", cardTap("E15", "114"), "3,2|floor 20|undo 2|redo 1|changed 1|REDO FLOOR 3,2 TO 20|") & return after tLog
+put ck("A: a new change forgets the redo", cardTap("E15", "97"), "3,2|floor 10|undo 3|redo 0|changed 1|FLOOR 3,2 20 TO 10|") & return after tLog
+put ck("R now: nothing to redo", cardTap("E15", "114"), "3,2|floor 10|undo 3|redo 0|changed 1|NOTHING TO REDO|") & return after tLog
+put ck("A twice: flat ground (1), then empty space (0)", cardTap("E15", "97", 2), "3,2|floor 0|undo 5|redo 0|changed 1|FLOOR 3,2 1 TO 0|") & return after tLog
+put ck("A on empty space changes nothing and keeps no change", cardTap("E15", "97"), "3,2|floor 0|undo 5|redo 0|changed 1|FLOOR 3,2 1 TO 0|") & return after tLog
+get cardTap("E15", "65364")
+put ck("down, Q twenty-five times: a 250 hu tower", cardTap("E15", "113", 25), "3,3|floor 250|undo 30|redo 0|changed 2|FLOOR 3,3 240 TO 250|") & return after tLog
+put ck("Q twice more: 255 is the top, the second press keeps nothing", cardTap("E15", "113", 2), "3,3|floor 255|undo 31|redo 0|changed 2|FLOOR 3,3 250 TO 255|") & return after tLog
+put ck("U thirty-five times: all the way back, the map as it was opened", cardTap("E15", "117", 35), "3,2|floor 1|undo 0|redo 31|changed 0|NOTHING TO UNDO|") & return after tLog
+put ck("R thirty-one times: every change again, in order", cardTap("E15", "114", 31), "3,3|floor 255|undo 31|redo 0|changed 2|REDO FLOOR 3,3 TO 255|") & return after tLog
+delete stack "EditorExample"
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+-- hold pKeys for pSteps steps, then the card's State
+function cardRun pPre, pKeys, pSteps
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with pKeys
+  repeat pSteps times
+    dispatch "Game.OnUpdate" to tS
+  end repeat
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardRun
+
+-- press and let go of pKeys pTimes times
+function cardTap pPre, pKeys, pTimes
+  local tS
+  if pTimes is empty then put 1 into pTimes
+  repeat pTimes times
+    get cardRun(pPre, pKeys, 1)
+    get cardRun(pPre, "0", 1)
+  end repeat
+  return it
+end cardTap
+
+-- any handler of the card, with up to three parameters
+function cardDo pMsg, pA, pB, pC
+  dispatch pMsg to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardDo
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn
+
+function ckStart pName, pState, pWant
+  if pState begins with pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [" & pWant & "...]"
+end ckStart
+
+function ckHas pName, pState, pWant
+  if pState contains pWant then return "PASS " & pName & "   " & pState
+  return "FAIL " & pName & " got [" & pState & "] want [..." & pWant & "...]"
+end ckHas

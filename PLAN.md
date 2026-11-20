@@ -82,15 +82,15 @@ an editor GUI (BitEditor, or a separate tool where the data is different, like A
 | E04 | Ceilings: W / S lower a roof; a `~` tunnel | a second height layer | TRLE ceilings |
 | E05 | Slopes: raise one edge of a square | corner heights, sloped meshes | TRLE arrows |
 | E06 | A door that rises when the hero is near | effects in play | Forge platforms |
-| E07 | A pad that opens a door elsewhere | links: trigger -> target | Forge tags, TRLE triggers |
-| E08 | Teleporter pairs | links between cells | Forge teleporter |
-| E09 | Water with a tide | animated levels | Forge liquids |
-| E10 | A spawner with initial / min / max / % | spawn rules | Forge item parameters |
-| E11 | Camera squares | cameras from data | TRLE cameras |
-| E12 | The checker: list problems, jump to each | validation | Forge errors, TRLE finders |
+| E07 | A pad that opens a door elsewhere (DONE 18 Nov: `tests/e07_headless.txt`, 13 checks) | links: trigger -> target | Forge tags, TRLE triggers |
+| E08 | Teleporter pairs (DONE 18 Nov: `examples/E08_Teleporters`, `tests/e08_headless.txt`, 9 checks; arriving is not entering, so no bounce) | links between cells | Forge teleporter |
+| E09 | Water with a tide (DONE 18 Nov: `examples/E09_Tide`, `tests/e09_headless.txt`, 10 checks; `[objects]` kind `tide` with low / high / period) | animated levels | Forge liquids |
+| E10 | A spawner with initial / min / max / % (DONE 18 Nov: `examples/E10_Spawner`, `tests/e10_headless.txt`, 9 checks; the yard's `sp1` line) | spawn rules | Forge item parameters |
+| E11 | Camera squares (DONE 18 Nov: `examples/E11_CameraSquares`, `tests/e11_headless.txt`, 13 checks; fixed, target and flyby from the yard's camera lines) | cameras from data | TRLE cameras |
+| E12 | The checker: list problems, jump to each (DONE 18 Nov: `examples/E12_Checker`, `tests/e12_headless.txt`, 15 checks; maps `cards_broken` + `cards_lost`) | validation | Forge errors, TRLE finders |
 | E13 | Walk the map with Amazing Couple's hero (DONE 2026-11-14: a version 2 cellmap as a level, `CellMap.LevelSegments` + `CellMap.Walk`; `tests/e13_test.sh`) | preview | Forge visual mode, TRLE preview |
-| E14 | Stacked maps: a room above a room | base heights | TRLE stacked rooms |
-| E15 | Undo | an undo stack | both |
+| E14 | Stacked maps: a room above a room (DONE 18 Nov: `examples/E14_StackedMaps`, `tests/e14_headless.txt`, 12 checks; `cards_lower` + `cards_upper` joined by a [stack] line) | base heights | TRLE stacked rooms |
+| E15 | Undo (DONE 18 Nov: `examples/E15_Undo`, `tests/e15_headless.txt`, 13 checks; a stack of changes, not copies) | an undo stack | both |
 
 ## 5. Then the GUIs
 - The map tool (BitEditor, grown with E02-E15 as tools) - Forge/TRLE-like.
