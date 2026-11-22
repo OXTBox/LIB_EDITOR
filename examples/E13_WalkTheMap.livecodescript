@@ -258,10 +258,15 @@ on E13.BuildLevel
    end if
    if sPack is an array then
       put CellMap.PackSegments(sPack, sPlace, sTags, tUseFont) into tSegs
+      if sLean is true then
+         put Lean.Segments(tSegs, empty) into tSegs
+      end if
+   else if sLean is true then
+      -- lean: the outline only, roofs' and blocks' seams cut (LIB_BIT/livecode/lib_lean)
+      put Lean.MapSegments(sMap, sTags, tUseFont, empty) into tSegs
    else
       put CellMap.LevelSegments(sMap, sTags, tUseFont) into tSegs
    end if
-   if sLean is true then put Lean.Segments(tSegs, empty) into tSegs
    put the number of lines of tSegs into sSegCount
    repeat for each line tSeg in tSegs
       put item 7 of tSeg into tClass
