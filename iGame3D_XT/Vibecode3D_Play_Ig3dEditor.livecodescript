@@ -36,6 +36,8 @@
 ##   The titles are green graphics; a click (mouseUp) fills ONE popup button (LIB_MENU's Menu.PopFor,
 ##   or the same button made here without LIB_MENU) in plain black on white. Ctrl + letter: the
 ##   shortcut items (commandKeyDown).
+## CONSOLE (22 Nov 2026, the owner's note LIB_EDITOR/iGame3D_XT/CONSOLE_NOTE.md): Window > Console opens a
+##   Blender-like console in the lower left; autofill while typing, Tab = a menu of the words (lib_suggest).
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
 ######################################################################################
 
@@ -273,6 +275,7 @@ end Ig.PopFill
 -- menu buttons did. Dimmed items (() are skipped; nothing found: passed on.
 on commandKeyDown pKey
    local tHit
+   if Ig.ConsoleTyping() and pKey is among the items of "a,c,v,x,z" then pass commandKeyDown   -- the line's own Ctrl keys
    put Ig.ShortcutFor(pKey) into tHit
    if tHit is empty then pass commandKeyDown
    set the itemDel to "|"
@@ -519,6 +522,7 @@ on Ig.Layout
    put sLayout["pLeft"] + 8 into sLayout["msgX"]
    put sLayout["pBottom"] - 18 into sLayout["msgY"]
    Ig.PlaceLibrary
+   Ig.PlaceConsole
    unlock screen
 end Ig.Layout
 
@@ -770,6 +774,9 @@ on Ig.Menu pMenu, pItem
          break
       case "Help/iGame3D Help"
          Ig.Help
+         break
+      case "Window/Console"
+         Ig.Console
          break
       case "Window/Inspector"
          Ig.OpenTool "V3D_Inspector", "v3d_inspector.livecodescript", "Insp.Build"
@@ -2416,6 +2423,524 @@ on Ig.Say pText
    put sTicks + 150 into sMsgUntil
 end Ig.Say
 
+-------------------------------------------------------------------- the console (owner, 22 Nov 2026)
+-- Window > Console: a box in the lower left of the window, like Blender's Python console: the
+-- answers above, one line to type in below. Its words come from LIB_ig3d's lib_suggest (the engine
+-- contract's names, LIB_ig3d/Data/contract_words.txt, never typed here):
+--   typing      "Entity.Se" fills in the first name that begins so ("Entity.SetBob"), the added
+--               part selected: typing on replaces it, Backspace takes it away. "Ent" fills "Entity."
+--   Tab         a menu of what fits ("Entity." + Tab: every Entity call; "Entity.Po" + Tab: the
+--               Position calls); a pick puts the call in the line with its parameters selected, and
+--               its meaning in the answers. One fit: put in at once, no menu. No cycling.
+--   Return      runs the line; a call that gives a value back (or "put" alone) shows the value
+--   Up / Down   the lines run before.    "clear" empties the answers.    "help" lists the groups.
+
+local sCon   -- ["hist"] lines run, ["at"] where Up/Down is, ["fill"] chars autofilled,
+             -- ["menu"] the Tab list, ["word"] the word it is for, ["typed"] the text before the cursor
+
+on Ig.Console pShow
+   local tG, tN
+   if there is not a group "Ig3dTools" then exit Ig.Console
+   put the short id of group "Ig3dTools" into tG
+   if pShow is empty then put not Ig.ConsoleShown() into pShow
+   if pShow then
+      Ig.ConsoleLoad
+      Ig.ConsoleBuild
+   end if
+   if there is not a field "Ig3dConsoleIn" of group id tG then exit Ig.Console
+   lock screen
+   set the visible of field "Ig3dConsoleOut" of group id tG to pShow
+   set the visible of field "Ig3dConsoleIn" of group id tG to pShow
+   set the visible of button "Ig3dConsoleClose" of group id tG to pShow
+   Ig.Layout
+   unlock screen
+   try
+      if pShow then
+         focus on field "Ig3dConsoleIn" of group id tG
+      else
+         focus on nothing
+      end if
+   catch tN
+   end try
+   Ig.Wake
+end Ig.Console
+
+function Ig.ConsoleShown
+   if there is not a field "Ig3dConsoleIn" of group "Ig3dTools" then return false
+   return the visible of field "Ig3dConsoleIn" of group "Ig3dTools"
+end Ig.ConsoleShown
+
+-- true while the console's line has the keyboard (the camera keys and Ctrl+Z are then the line's)
+function Ig.ConsoleTyping
+   local tF, tErr
+   try
+      put the long id of the focusedObject into tF
+   catch tErr
+      return false
+   end try
+   return tF contains "field" and the short name of the focusedObject is "Ig3dConsoleIn"
+end Ig.ConsoleTyping
+
+-- lib_suggest, started once (LIB_ig3d/livecode, or Tools/ beside this script)
+on Ig.ConsoleLoad
+   local tLib, tErr
+   if sCon["loaded"] is true then exit Ig.ConsoleLoad
+   if not ("LibSuggest" is among the lines of the stacksInUse) then
+      put Ig.ToolFile("lib_suggest.livecodescript") into tLib
+      if there is not a file tLib then
+         put "(no word list: lib_suggest.livecodescript not found)" into sCon["why"]
+         exit Ig.ConsoleLoad
+      end if
+      start using stack tLib
+   end if
+   try
+      Suggest.Load
+      put the result into tErr
+   catch tErr
+   end try
+   if tErr is empty then
+      put true into sCon["loaded"]
+      put empty into sCon["why"]
+   else
+      put "(no word list:" && line 1 of tErr & ")" into sCon["why"]
+   end if
+end Ig.ConsoleLoad
+
+on Ig.ConsoleBuild
+   local tG, tS
+   put the short id of group "Ig3dTools" into tG
+   lock screen
+   if there is not a field "Ig3dConsoleOut" of group id tG then
+      Ig.Template "field"
+      create field "Ig3dConsoleOut" in group id tG
+      set the lockText of field "Ig3dConsoleOut" of group id tG to true
+      set the traversalOn of field "Ig3dConsoleOut" of group id tG to false
+      set the vScrollbar of field "Ig3dConsoleOut" of group id tG to true
+      set the textSize of field "Ig3dConsoleOut" of group id tG to 11
+      set the opaque of field "Ig3dConsoleOut" of group id tG to true
+      put "iGame3D XT console.  Type Entity. and press Tab.  Return runs the line.  help: the groups." into field "Ig3dConsoleOut" of group id tG
+      if sCon["why"] is not empty then put cr & sCon["why"] after field "Ig3dConsoleOut" of group id tG
+   end if
+   if there is not a field "Ig3dConsoleIn" of group id tG then
+      Ig.Template "field"
+      create field "Ig3dConsoleIn" in group id tG
+      set the dontWrap of field "Ig3dConsoleIn" of group id tG to true
+      set the textSize of field "Ig3dConsoleIn" of group id tG to 12
+      set the opaque of field "Ig3dConsoleIn" of group id tG to true
+      set the traversalOn of field "Ig3dConsoleIn" of group id tG to true
+      set the lockText of field "Ig3dConsoleIn" of group id tG to false
+      set the backgroundColor of field "Ig3dConsoleIn" of group id tG to "#0A1A0E"
+      put "on keyDown pKey" & cr & "   if not Ig.ConsoleKey(pKey) then pass keyDown" & cr & "end keyDown" & cr into tS
+      put "on tabKey" & cr & "   Ig.ConsoleTab" & cr & "end tabKey" & cr after tS
+      put "on returnInField" & cr & "   Ig.ConsoleRun" & cr & "end returnInField" & cr after tS
+      put "on enterInField" & cr & "   Ig.ConsoleRun" & cr & "end enterInField" & cr after tS
+      put "on backspaceKey" & cr & "   Ig.ConsoleNoFill" & cr & "   pass backspaceKey" & cr & "end backspaceKey" & cr after tS
+      put "on arrowKey pKey" & cr & "   if pKey is " & quote & "up" & quote & " or pKey is " & quote & "down" & quote & " then" & cr & \
+            "      Ig.ConsoleHistory pKey" & cr & "   else" & cr & "      pass arrowKey" & cr & "   end if" & cr & "end arrowKey" after tS
+      set the script of field "Ig3dConsoleIn" of group id tG to tS
+   end if
+   if there is not a button "Ig3dConsoleClose" of group id tG then
+      Ig.Template "button"
+      create button "Ig3dConsoleClose" in group id tG
+      set the label of button "Ig3dConsoleClose" of group id tG to "X"
+      set the textSize of button "Ig3dConsoleClose" of group id tG to 11
+      set the textStyle of button "Ig3dConsoleClose" of group id tG to "bold"
+      set the traversalOn of button "Ig3dConsoleClose" of group id tG to false
+      set the opaque of button "Ig3dConsoleClose" of group id tG to true
+      set the tooltip of button "Ig3dConsoleClose" of group id tG to "Close the console"
+      set the script of button "Ig3dConsoleClose" of group id tG to "on mouseUp" & cr & "   Ig.Console false" & cr & "end mouseUp"
+   end if
+   unlock screen
+end Ig.ConsoleBuild
+
+-- its place: the lower left of the free area, up to 520 wide, left of the Library; the status
+-- message goes above it while it shows
+on Ig.PlaceConsole
+   local tG, tL, tT, tR, tB
+   if there is not a group "Ig3dTools" then exit Ig.PlaceConsole
+   put the short id of group "Ig3dTools" into tG
+   if there is not a field "Ig3dConsoleIn" of group id tG then exit Ig.PlaceConsole
+   if not the visible of field "Ig3dConsoleIn" of group id tG then exit Ig.PlaceConsole
+   put sLayout["pLeft"] into tL
+   if tL is not a number then put 2 into tL
+   put sLayout["pRight"] into tR
+   if tR is not a number then put the width of this card - 10 into tR
+   put sLayout["pBottom"] into tB
+   if tB is not a number then put the height of this card - 30 into tB
+   if there is a graphic "Ig3dPreview" of group id tG and the visible of graphic "Ig3dPreview" of group id tG then
+      put min(tR, the left of graphic "Ig3dPreview" of group id tG - 6) into tR
+   end if
+   put max(tL + 120, min(tL + 520, tR)) into tR
+   put max(tB - 180, kBarH + 40) into tT
+   set the rect of field "Ig3dConsoleOut" of group id tG to tL, tT, tR, tB - 24
+   set the rect of field "Ig3dConsoleIn" of group id tG to tL, tB - 22, tR, tB
+   set the rect of button "Ig3dConsoleClose" of group id tG to tR - 20, tT - 19, tR, tT - 1
+   put tT - 40 into sLayout["msgY"]
+end Ig.PlaceConsole
+
+-- the word being typed at the end of pText: back to a space, bracket, comma, quote or sign
+function Ig.ConsoleWord pText
+   local n
+   put the number of chars of pText into n
+   repeat while n > 0
+      if offset(char n of pText, " (),[]=+-*/&<>" & quote & tab) > 0 then exit repeat
+      subtract 1 from n
+   end repeat
+   return char n + 1 to -1 of pText
+end Ig.ConsoleWord
+
+-- autofill: pTyped with the rest of the first name that begins with its last word (that word in the
+-- name's own capitals). "Ent" -> "Entity." (a group); "Entity.Se" -> "Entity.SetBob"; "gCam" ->
+-- "gCameraPitch". Nothing fits, a dot last, or one letter: pTyped as it was.
+function Ig.ConsoleFill pTyped
+   local tWord, tLine, tName, tBefore, tErr
+   put Ig.ConsoleWord(pTyped) into tWord
+   if the number of chars of tWord < 2 or char -1 of tWord is "." then return pTyped
+   put char 1 to -(the number of chars of tWord + 1) of pTyped into tBefore
+   if tWord is pTyped then put empty into tBefore
+   try
+      if not (tWord contains ".") then
+         repeat for each line tName in Suggest.Groups()
+            if tName begins with tWord then return tBefore & tName & "."
+         end repeat
+      end if
+      set the itemDelimiter to tab
+      repeat for each line tLine in Suggest.For(tWord)
+         put item 4 of tLine into tName
+         if tName begins with tWord and the number of chars of tName > the number of chars of tWord then return tBefore & tName
+      end repeat
+   catch tErr
+   end try
+   return pTyped
+end Ig.ConsoleFill
+
+-- the Tab list for a word: lib_suggest's lines (form, tag, short meaning, name), then the names of
+-- the word's group that have the rest anywhere in them ("Entity.Po": GetPosition, SetPosition)
+function Ig.ConsoleList pWord
+   local tList, tLine, tGroup, tRest, tSeen, tErr
+   try
+      put Suggest.For(pWord) into tList
+      if pWord contains "." and char -1 of pWord is not "." then
+         set the itemDelimiter to tab
+         repeat for each line tLine in tList
+            put true into tSeen[item 4 of tLine]
+         end repeat
+         put char 1 to offset(".", pWord) of pWord into tGroup
+         put char offset(".", pWord) + 1 to -1 of pWord into tRest
+         repeat for each line tLine in Suggest.For(tGroup)
+            if tSeen[item 4 of tLine] is true then next repeat
+            if char (the number of chars of tGroup + 1) to -1 of item 4 of tLine contains tRest then
+               if tList is not empty then put cr after tList
+               put tLine after tList
+            end if
+         end repeat
+      end if
+   catch tErr
+      return empty
+   end try
+   return tList
+end Ig.ConsoleList
+
+-- a key typed in the line (keyDown): typed at the end, the rest is filled in; true = done here
+function Ig.ConsoleKey pKey
+   local tF, tText, tChunk, tFrom, tTo, tLen, tTyped, tFull, tErr
+   put the long id of field "Ig3dConsoleIn" of group "Ig3dTools" into tF
+   put the text of tF into tText
+   put the number of chars of tText into tLen
+   put the selectedChunk into tChunk
+   if word 1 of tChunk is "char" and Ig.ConsoleTyping() then
+      put word 2 of tChunk into tFrom
+      put word 4 of tChunk into tTo
+   else
+      put tLen - sCon["fill"] + 1 into tFrom    -- no selection to read (a test): after what was typed
+      put tLen into tTo
+   end if
+   if tTo < tLen then
+      put 0 into sCon["fill"]
+      return false                               -- typing in the middle: as any field does
+   end if
+   put char 1 to tFrom - 1 of tText & pKey into tTyped
+   put tTyped into tFull
+   if offset(pKey, "abcdefghijklmnopqrstuvwxyz0123456789._") > 0 then put Ig.ConsoleFill(tTyped) into tFull
+   set the text of tF to tFull
+   put the number of chars of tFull - the number of chars of tTyped into sCon["fill"]
+   try
+      if sCon["fill"] > 0 then
+         select char (the number of chars of tTyped + 1) to (the number of chars of tFull) of tF
+      else
+         select after char (the number of chars of tFull) of tF
+      end if
+   catch tErr
+   end try
+   return true
+end Ig.ConsoleKey
+
+on Ig.ConsoleNoFill
+   put 0 into sCon["fill"]
+end Ig.ConsoleNoFill
+
+-- the line's text before the cursor (an autofilled tail left out)
+function Ig.ConsoleTyped
+   local tF, tText, tChunk
+   put the long id of field "Ig3dConsoleIn" of group "Ig3dTools" into tF
+   put the text of tF into tText
+   put the selectedChunk into tChunk
+   if word 1 of tChunk is "char" and Ig.ConsoleTyping() then return char 1 to word 2 of tChunk - 1 of tText
+   return char 1 to -(sCon["fill"] + 1) of tText
+end Ig.ConsoleTyped
+
+-- Tab: a menu of what fits the word before the cursor (one fit: put in at once)
+on Ig.ConsoleTab
+   local tTyped, tWord, tList, tMenu, tLine, tB, tF, tX, tErr, tN
+   put Ig.ConsoleTyped() into tTyped
+   put Ig.ConsoleWord(tTyped) into tWord
+   put Ig.ConsoleList(tWord) into tList
+   if tList is empty then
+      Ig.ConsoleSay "(nothing fits" && quote & tWord & quote & ")"
+      exit Ig.ConsoleTab
+   end if
+   put line 1 to 60 of tList into tList
+   put tTyped into sCon["typed"]
+   put tWord into sCon["word"]
+   put tList into sCon["menu"]
+   if the number of lines of tList is 1 then
+      Ig.ConsolePick 1
+      exit Ig.ConsoleTab
+   end if
+   set the itemDelimiter to tab
+   repeat for each line tLine in tList
+      if item 2 of tLine is "group" then
+         put item 1 of tLine & "   (" & item 3 of tLine & ")" & cr after tMenu
+      else if item 2 of tLine is empty then
+         put item 1 of tLine & cr after tMenu
+      else
+         put item 1 of tLine & "   (" & item 2 of tLine & ")" & cr after tMenu
+      end if
+   end repeat
+   delete last char of tMenu
+   replace "/" with "\/" in tMenu
+   put Ig.ConsolePop(tMenu) into tB
+   put the long id of field "Ig3dConsoleIn" of group "Ig3dTools" into tF
+   put min(the right of tF - 40, the left of tF + 6 + 7 * the number of chars of tTyped) into tX
+   try
+      popup tB at tX, the top of tF
+   catch tErr
+      -- no screen (a headless test): the menu is filled, nothing to show it on
+   end try
+end Ig.ConsoleTab
+
+-- the one popup for the console, plain black on white (colours set on the template before create)
+function Ig.ConsolePop pText
+   local tB
+   if there is not a button "Ig3dConsolePop" of this card then
+      lock messages
+      reset the templateButton
+      set the textColor of the templateButton to "0,0,0"
+      set the backgroundColor of the templateButton to "255,255,255"
+      set the hiliteColor of the templateButton to "51,153,255"
+      set the borderColor of the templateButton to "128,128,128"
+      set the style of the templateButton to "menu"
+      set the menuMode of the templateButton to "popup"
+      set the visible of the templateButton to false
+      create button "Ig3dConsolePop"
+      reset the templateButton
+      unlock messages
+      set the traversalOn of button "Ig3dConsolePop" of this card to false
+      set the script of button "Ig3dConsolePop" of this card to "on menuPick pItem" & cr & "   Ig.ConsolePick the menuHistory of me" & cr & "end menuPick"
+   end if
+   put the long id of button "Ig3dConsolePop" of this card into tB
+   set the text of tB to pText
+   return tB
+end Ig.ConsolePop
+
+-- a pick from the Tab list (its line number): the call goes in the line, its parameters selected
+on Ig.ConsolePick pN
+   local tLine, tForm, tName, tText, tAt, tLen, tF, tErr
+   set the itemDelimiter to tab
+   put line pN of sCon["menu"] into tLine
+   if tLine is empty then exit Ig.ConsolePick
+   put item 1 of tLine into tForm
+   put item 4 of tLine into tName
+   if item 2 of tLine is "group" then put tName into tForm
+   put char 1 to -(the number of chars of sCon["word"] + 1) of sCon["typed"] into tText
+   if sCon["word"] is sCon["typed"] then put empty into tText
+   put tText & tForm into tText
+   put the long id of field "Ig3dConsoleIn" of group "Ig3dTools" into tF
+   set the text of tF to tText
+   put 0 into sCon["fill"]
+   put the number of chars of tText into tLen
+   put tLen - the number of chars of tForm + the number of chars of tName into tAt   -- the name's end
+   try
+      focus on tF
+      if char tAt + 1 of tText is "(" and char -1 of tText is ")" and tLen - tAt > 2 then
+         select char tAt + 2 to tLen - 1 of tF
+      else if char tAt + 1 of tText is space and tLen - tAt > 1 then
+         select char tAt + 2 to tLen of tF
+      else
+         select after char tLen of tF
+      end if
+   catch tErr
+   end try
+   if item 2 of tLine is not "group" then Ig.ConsoleSay tName & ":" && Suggest.Meaning(tName)
+end Ig.ConsolePick
+
+-- Up / Down: the lines run before (past the last: an empty line)
+on Ig.ConsoleHistory pDir
+   local tN, tF, tErr
+   put the number of lines of sCon["hist"] into tN
+   if tN is 0 then exit Ig.ConsoleHistory
+   if sCon["at"] is not a number then put tN + 1 into sCon["at"]
+   if pDir is "up" then
+      put max(1, sCon["at"] - 1) into sCon["at"]
+   else
+      put min(tN + 1, sCon["at"] + 1) into sCon["at"]
+   end if
+   put the long id of field "Ig3dConsoleIn" of group "Ig3dTools" into tF
+   set the text of tF to line sCon["at"] of sCon["hist"]
+   put 0 into sCon["fill"]
+   try
+      select after char (the number of chars of the text of tF) of tF
+   catch tErr
+   end try
+end Ig.ConsoleHistory
+
+-- Return: run the line, show it and its answer
+on Ig.ConsoleRun
+   local tLine, tF, tAnswer
+   put the long id of field "Ig3dConsoleIn" of group "Ig3dTools" into tF
+   put the text of tF into tLine
+   set the text of tF to empty
+   put 0 into sCon["fill"]
+   if word 1 to -1 of tLine is empty then exit Ig.ConsoleRun
+   if sCon["hist"] is empty then
+      put tLine into sCon["hist"]
+   else
+      put cr & tLine after sCon["hist"]
+   end if
+   put the number of lines of sCon["hist"] + 1 into sCon["at"]
+   Ig.ConsoleSay "> " & tLine
+   put Ig.ConsoleDo(tLine) into tAnswer
+   if tAnswer is not empty then Ig.ConsoleSay tAnswer
+   Ig.Wake
+end Ig.ConsoleRun
+
+-- run one line here (this card's script): a call, a command, or a value to show
+function Ig.ConsoleDo pLine
+   local tAnswer, tGlobals, tExpr, tFirst, tErr, tErr2
+   put word 1 to -1 of pLine into pLine
+   if pLine is "clear" then
+      put empty into field "Ig3dConsoleOut" of group "Ig3dTools"
+      return empty
+   end if
+   if pLine is "help" then
+      try
+         put Suggest.Groups() into tAnswer
+      catch tErr
+      end try
+      replace cr with ", " in tAnswer
+      return "groups:" && tAnswer & ". Type one, a dot, then Tab. Up/Down: lines before. clear: empty this."
+   end if
+   put Ig.ConsoleGlobals() into tGlobals
+   -- "put x" alone shows x; a call written with brackets, a value's name or a call that gives
+   -- something back is a value too
+   if word 1 of pLine is "put" and not (" into " is in pLine or " after " is in pLine or " before " is in pLine) then
+      put word 2 to -1 of pLine into tExpr
+   else
+      put char 1 to offset("(", pLine & "(") - 1 of word 1 of pLine into tFirst
+      if char (the number of chars of tFirst + 1) of pLine is "(" and tFirst is not empty then
+         put pLine into tExpr
+      else if the number of words of pLine is 1 and Ig.ConsoleIsValue(pLine) then
+         put pLine into tExpr
+      else if Ig.ConsoleIsValue(tFirst) then
+         -- a call that gives a value, typed as a command ("Entity.Spawn "Box", 0, 0, 0"): its value
+         put tFirst & "(" & word 2 to -1 of pLine & ")" into tExpr
+      end if
+   end if
+   if tExpr is not empty then
+      try
+         do tGlobals & cr & "put (" & tExpr & ") into tAnswer"
+      catch tErr
+         return "could not work that out:" && Ig.ConsoleError(tErr)
+      end try
+      if tAnswer is empty then return "(empty)"
+      return tAnswer
+   end if
+   try
+      do tGlobals & cr & pLine
+      put the result into tAnswer
+   catch tErr
+      -- not a command: maybe a sum or a value ("2 + 2", "the width of this card")
+      try
+         do tGlobals & cr & "put (" & pLine & ") into tAnswer"
+      catch tErr2
+         return "could not run that:" && Ig.ConsoleError(tErr)
+      end try
+      if tAnswer is empty then return "(empty)"
+      return tAnswer
+   end try
+   if tAnswer is empty then return "ok"
+   return tAnswer
+end Ig.ConsoleDo
+
+-- the shared values the contract names (gCameraYaw, bPaused ...), declared for a line run here
+function Ig.ConsoleGlobals
+   local tLine, tOut, tErr
+   if sCon["globals"] is not empty then return sCon["globals"]
+   try
+      set the itemDelimiter to tab
+      repeat for each line tLine in Suggest.For("Value.")
+         if char 1 of item 4 of tLine is "g" or char 1 of item 4 of tLine is "b" then put item 4 of tLine & "," after tOut
+      end repeat
+   catch tErr
+   end try
+   if tOut is empty then return empty
+   delete last char of tOut
+   put "global" && tOut into sCon["globals"]
+   return sCon["globals"]
+end Ig.ConsoleGlobals
+
+-- true for a shared value's name or a call that gives a value back (with no parameters)
+function Ig.ConsoleIsValue pName
+   local tLine, tErr
+   try
+      set the itemDelimiter to tab
+      repeat for each line tLine in Suggest.For(pName)
+         if item 4 of tLine is pName and (item 2 of tLine contains "value" or item 2 of tLine contains "gives") then return true
+      end repeat
+   catch tErr
+   end try
+   return false
+end Ig.ConsoleIsValue
+
+-- an error in words: the engine's own text for its number, else its first line
+function Ig.ConsoleError pErr
+   local tCode, tText, tErr
+   put item 1 of line 1 of pErr into tCode
+   try
+      if tCode is an integer and tCode > 0 then put line tCode of the scriptExecutionErrors into tText
+   catch tErr
+   end try
+   if tText is empty then put line 1 of pErr into tText
+   return tText
+end Ig.ConsoleError
+
+-- one line (or more) at the end of the answers, scrolled into view; the last 400 lines kept
+on Ig.ConsoleSay pText
+   local tF, tErr
+   if there is not a field "Ig3dConsoleOut" of group "Ig3dTools" then exit Ig.ConsoleSay
+   put the long id of field "Ig3dConsoleOut" of group "Ig3dTools" into tF
+   if the text of tF is empty then
+      set the text of tF to pText
+   else
+      set the text of tF to the text of tF & cr & pText
+   end if
+   if the number of lines of the text of tF > 400 then set the text of tF to line -400 to -1 of the text of tF
+   try
+      set the vScroll of tF to the formattedHeight of tF
+   catch tErr
+   end try
+end Ig.ConsoleSay
+
 -------------------------------------------------------------------- the loop
 
 on Game.OnUpdate
@@ -2424,6 +2949,7 @@ on Game.OnUpdate
    put sSelected into gV3DSelected     -- the Inspector's Object page shows it
    add 1 to sTicks
    put the keysDown into tKeys
+   if Ig.ConsoleTyping() then put empty into tKeys    -- typing in the console: the keys are the line's
    local tStep
    put 8 * 30 / max(15, sLayout["fps"]) into tStep
    if 119 is among the items of tKeys or 65362 is among the items of tKeys then add tStep to sCamZ
@@ -2476,4 +3002,5 @@ end Collision.Hit
 
 -- the arrows move you; a focused menu or field must never get them
 on arrowKey pKey
+   if the short name of the target is "Ig3dConsoleIn" then pass arrowKey   -- left/right in the console's line
 end arrowKey
