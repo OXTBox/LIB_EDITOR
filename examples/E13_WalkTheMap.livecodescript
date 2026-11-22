@@ -9,6 +9,8 @@
 ## CONTROLS  W S or Up Down: walk   A D or Left Right: turn   Shift: run
 ##           R: glyph relief on / off   M: next map (wizard_pool, amazing_couple, two_rooms)
 ##           E: take the door or ladder you stand on (a map pack's doors)
+##           L: lean style on / off (only the outline you can see; a map saved lean starts lean;
+##           LIB_BIT/livecode/lib_lean.livecodescript, 21 Nov 2026)
 ## PACKS     two_rooms is a map pack (CELLMAP_V3.md): a cellar and a loft stacked in one
 ##           place, drawn by CellMap.PackSegments, walked by CellMap.PackWalk (stairs up
 ##           through a hole, a sloped ramp to the goal), a ladder by CellMap.PackDoors
@@ -33,7 +35,7 @@ constant kMaps = "wizard_pool,amazing_couple,two_rooms"
 -- class, colour: what each kind of line means (CELLMAP_V2.md section 6)
 constant kColours = "floor #1F4A5A,wall #7FA8FF,pit #FF5040,water #40E0FF,ceiling #9098A8,green #50E070,sky #B8D8FF,relief #FFFFFF"
 
-local sMap, sTags, sFont, sMapNo, sRelief, sSegCount, sStepMS
+local sMap, sTags, sFont, sMapNo, sRelief, sSegCount, sStepMS, sLean
 local sClip, sHero, sKeyWas, sTestKeys, sError, sMsg, sMsgUntil, sTicks, sTeleWait
 local sCamX, sCamY, sCamZ
 -- a map pack (empty for a single map): the pack, the place walked, the map stood on and its shift
@@ -57,6 +59,9 @@ on Game.OnStart
       put "E13: NOT FOUND LIB_BIT/EDITOR" into sError
    else
       start using stack tLib
+      -- the Lean style (L): optional, the level draws without it
+      put E13.FindFile("LIB_BIT/livecode/lib_lean.livecodescript") into tLib
+      if tLib is not empty then start using stack tLib
       put CellMap.TagsFromText(CellMap.ReadText(E13.FindFile("LIB_BIT/editor/data/tags_default.txt"))) into sTags
       E13.LoadClips
    end if
@@ -79,6 +84,15 @@ on Game.OnUpdate
       E13.BuildLevel
    end if
    if E13.Pressed(tKeys, "101,69", "door") then E13.TakeDoor
+   if E13.Pressed(tKeys, "108,76", "lean") then
+      put not sLean into sLean
+      E13.BuildLevel
+      if sLean then
+         E13.Say "LEAN STYLE:" && sSegCount && "LINES", 3000
+      else
+         E13.Say "CUBES:" && sSegCount && "LINES", 3000
+      end if
+   end if
    if E13.Pressed(tKeys, "109,77", "map") then
       add 1 to sMapNo
       if sMapNo > the number of items of kMaps then put 1 into sMapNo
@@ -134,6 +148,7 @@ on E13.LoadMap
    end if
    put CellMap.Read(tFile) into sMap
    CellMap.Upgrade sMap                      -- version 1 maps walk too
+   put (sMap["meta"]["style"] is "lean") into sLean    -- the map's own style (BitEditor: Scene > Lean Style)
    put CellMap.FontFromText(CellMap.ReadText(E13.FindFile("LIB_BIT/editor/fonts/" & sMap["meta"]["font"] & ".font.txt"))) into sFont
    -- the hero starts on the @ tag (else the first cell it can stand on)
    put empty into tStart
@@ -243,6 +258,12 @@ on E13.BuildLevel
    end if
    if sPack is an array then
       put CellMap.PackSegments(sPack, sPlace, sTags, tUseFont) into tSegs
+      if sLean is true then
+         put Lean.Segments(tSegs, empty) into tSegs
+      end if
+   else if sLean is true then
+      -- lean: the outline only, roofs' and blocks' seams cut (LIB_BIT/livecode/lib_lean)
+      put Lean.MapSegments(sMap, sTags, tUseFont, empty) into tSegs
    else
       put CellMap.LevelSegments(sMap, sTags, tUseFont) into tSegs
    end if
@@ -601,7 +622,7 @@ on E13.ShowHUD
    else
       HUD.Remove "E13.Msg"
    end if
-   HUD.Set "E13.Help", "W S WALK   A D TURN   SHIFT RUN   R RELIEF   M NEXT MAP   E DOOR / LADDER", gViewLeft + 20, gViewBottom - 30, 11
+   HUD.Set "E13.Help", "W S WALK   A D TURN   SHIFT RUN   R RELIEF   L LEAN   M NEXT MAP   E DOOR / LADDER", gViewLeft + 20, gViewBottom - 30, 11
 end E13.ShowHUD
 
 -------------------------------------------------------------------- helpers and tests
