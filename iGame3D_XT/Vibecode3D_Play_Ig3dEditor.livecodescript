@@ -36,6 +36,8 @@
 ##   The titles are green graphics; a click (mouseUp) fills ONE popup button (LIB_MENU's Menu.PopFor,
 ##   or the same button made here without LIB_MENU) in plain black on white. Ctrl + letter: the
 ##   shortcut items (commandKeyDown).
+## CONSOLE (22 Nov 2026, the owner's note LIB_EDITOR/iGame3D_XT/CONSOLE_NOTE.md): Window > Console opens a
+##   Blender-like console in the lower left; autofill while typing, Tab = a menu of the words (LIB_ig3d lib_console).
 ## NEEDS     nothing outside the engine. Map: LIB_ig3d/MAIN_UI_REUSE.md, TOOLBAR_MAP below.
 ######################################################################################
 
@@ -273,6 +275,7 @@ end Ig.PopFill
 -- menu buttons did. Dimmed items (() are skipped; nothing found: passed on.
 on commandKeyDown pKey
    local tHit
+   if Ig.ConsoleTyping() and pKey is among the items of "a,c,v,x,z" then pass commandKeyDown   -- the line's own Ctrl keys
    put Ig.ShortcutFor(pKey) into tHit
    if tHit is empty then pass commandKeyDown
    set the itemDel to "|"
@@ -519,6 +522,7 @@ on Ig.Layout
    put sLayout["pLeft"] + 8 into sLayout["msgX"]
    put sLayout["pBottom"] - 18 into sLayout["msgY"]
    Ig.PlaceLibrary
+   Ig.PlaceConsole
    unlock screen
 end Ig.Layout
 
@@ -770,6 +774,9 @@ on Ig.Menu pMenu, pItem
          break
       case "Help/iGame3D Help"
          Ig.Help
+         break
+      case "Window/Console"
+         Ig.Console
          break
       case "Window/Inspector"
          Ig.OpenTool "V3D_Inspector", "v3d_inspector.livecodescript", "Insp.Build"
@@ -2416,6 +2423,152 @@ on Ig.Say pText
    put sTicks + 150 into sMsgUntil
 end Ig.Say
 
+-------------------------------------------------------------------- the console (owner, 22 Nov 2026)
+-- Window > Console: a box in the lower left of the window, like Blender's Python console: the
+-- answers above, one line to type in below. The thinking is LIB_ig3d's lib_console (shared with the
+-- xt3d Games bench): typing fills in a name, Tab = a menu of what fits, Return runs the line
+-- (here, in this card: Con.DoHere), Up/Down the lines before, help, clear. Words: lib_suggest.
+
+local sConLoaded
+
+on Ig.Console pShow
+   local tG, tErr
+   if there is not a group "Ig3dTools" then exit Ig.Console
+   put the short id of group "Ig3dTools" into tG
+   if pShow is empty then put not Ig.ConsoleShown() into pShow
+   if pShow then Ig.ConsoleBuild
+   if there is not a field "Ig3dConsoleIn" of group id tG then exit Ig.Console
+   lock screen
+   set the visible of field "Ig3dConsoleOut" of group id tG to pShow
+   set the visible of field "Ig3dConsoleIn" of group id tG to pShow
+   set the visible of button "Ig3dConsoleClose" of group id tG to pShow
+   Ig.Layout
+   unlock screen
+   try
+      if pShow then
+         focus on field "Ig3dConsoleIn" of group id tG
+      else
+         focus on nothing
+      end if
+   catch tErr
+   end try
+   Ig.Wake
+end Ig.Console
+
+function Ig.ConsoleShown
+   if there is not a field "Ig3dConsoleIn" of group "Ig3dTools" then return false
+   return the visible of field "Ig3dConsoleIn" of group "Ig3dTools"
+end Ig.ConsoleShown
+
+-- true while the console's line has the keyboard (the camera keys and Ctrl+Z are then the line's)
+function Ig.ConsoleTyping
+   local tErr
+   if sConLoaded is not true then return false
+   try
+      return Con.Typing()
+   catch tErr
+      return false
+   end try
+end Ig.ConsoleTyping
+
+-- lib_console (and lib_suggest beside it), started once: LIB_ig3d/livecode, or Tools/ beside this script
+function Ig.ConsoleLoad
+   local tLib, tErr
+   if sConLoaded is true then return empty
+   if not ("LibConsole" is among the lines of the stacksInUse) then
+      put Ig.ToolFile("lib_console.livecodescript") into tLib
+      if there is not a file tLib then return "(no console: lib_console.livecodescript not found)"
+      start using stack tLib
+   end if
+   try
+      Con.Load
+      put the result into tErr
+   catch tErr
+   end try
+   put true into sConLoaded
+   if tErr is not empty then return "(" & line 1 of tErr & ")"
+   return empty
+end Ig.ConsoleLoad
+
+on Ig.ConsoleBuild
+   local tG, tWhy
+   put the short id of group "Ig3dTools" into tG
+   put Ig.ConsoleLoad() into tWhy
+   lock screen
+   if there is not a field "Ig3dConsoleOut" of group id tG then
+      Ig.Template "field"
+      create field "Ig3dConsoleOut" in group id tG
+      set the lockText of field "Ig3dConsoleOut" of group id tG to true
+      set the traversalOn of field "Ig3dConsoleOut" of group id tG to false
+      set the vScrollbar of field "Ig3dConsoleOut" of group id tG to true
+      set the textSize of field "Ig3dConsoleOut" of group id tG to 11
+      set the opaque of field "Ig3dConsoleOut" of group id tG to true
+      put "iGame3D XT console.  Type Entity. and press Tab.  Return runs the line.  help: the groups." into field "Ig3dConsoleOut" of group id tG
+      if tWhy is not empty then put cr & tWhy after field "Ig3dConsoleOut" of group id tG
+   end if
+   if there is not a field "Ig3dConsoleIn" of group id tG then
+      Ig.Template "field"
+      create field "Ig3dConsoleIn" in group id tG
+      set the textSize of field "Ig3dConsoleIn" of group id tG to 12
+      set the opaque of field "Ig3dConsoleIn" of group id tG to true
+      set the backgroundColor of field "Ig3dConsoleIn" of group id tG to "#0A1A0E"
+      if sConLoaded is true and "LibConsole" is among the lines of the stacksInUse then
+         Con.Attach the long id of field "Ig3dConsoleIn" of group id tG, the long id of field "Ig3dConsoleOut" of group id tG, the long id of this card
+      end if
+   end if
+   if there is not a button "Ig3dConsoleClose" of group id tG then
+      Ig.Template "button"
+      create button "Ig3dConsoleClose" in group id tG
+      set the label of button "Ig3dConsoleClose" of group id tG to "X"
+      set the textSize of button "Ig3dConsoleClose" of group id tG to 11
+      set the textStyle of button "Ig3dConsoleClose" of group id tG to "bold"
+      set the traversalOn of button "Ig3dConsoleClose" of group id tG to false
+      set the opaque of button "Ig3dConsoleClose" of group id tG to true
+      set the tooltip of button "Ig3dConsoleClose" of group id tG to "Close the console"
+      set the script of button "Ig3dConsoleClose" of group id tG to "on mouseUp" & cr & "   Ig.Console false" & cr & "end mouseUp"
+   end if
+   unlock screen
+end Ig.ConsoleBuild
+
+-- a console line runs here, so the editor's own handlers (Ig.Say ...) can be called too
+on Con.DoHere pGlobals, pCode, pIsValue
+   local tAnswer
+   if pIsValue then
+      do pGlobals & cr & "put (" & pCode & ") into tAnswer"
+      Ig.Wake
+      return tAnswer
+   end if
+   do pGlobals & cr & pCode
+   put the result into tAnswer
+   Ig.Wake
+   return tAnswer
+end Con.DoHere
+
+-- its place: the lower left of the free area, up to 520 wide, left of the Library; the status
+-- message goes above it while it shows
+on Ig.PlaceConsole
+   local tG, tL, tT, tR, tB
+   if there is not a group "Ig3dTools" then exit Ig.PlaceConsole
+   put the short id of group "Ig3dTools" into tG
+   if there is not a field "Ig3dConsoleIn" of group id tG then exit Ig.PlaceConsole
+   if not the visible of field "Ig3dConsoleIn" of group id tG then exit Ig.PlaceConsole
+   put sLayout["pLeft"] into tL
+   if tL is not a number then put 2 into tL
+   put sLayout["pRight"] into tR
+   if tR is not a number then put the width of this card - 10 into tR
+   put sLayout["pBottom"] into tB
+   if tB is not a number then put the height of this card - 30 into tB
+   if there is a graphic "Ig3dPreview" of group id tG and the visible of graphic "Ig3dPreview" of group id tG then
+      put min(tR, the left of graphic "Ig3dPreview" of group id tG - 6) into tR
+   end if
+   put max(tL + 120, min(tL + 520, tR)) into tR
+   put max(tB - 180, kBarH + 40) into tT
+   set the rect of field "Ig3dConsoleOut" of group id tG to tL, tT, tR, tB - 24
+   set the rect of field "Ig3dConsoleIn" of group id tG to tL, tB - 22, tR, tB
+   set the rect of button "Ig3dConsoleClose" of group id tG to tR - 20, tT - 19, tR, tT - 1
+   put tT - 40 into sLayout["msgY"]
+end Ig.PlaceConsole
+
 -------------------------------------------------------------------- the loop
 
 on Game.OnUpdate
@@ -2424,6 +2577,7 @@ on Game.OnUpdate
    put sSelected into gV3DSelected     -- the Inspector's Object page shows it
    add 1 to sTicks
    put the keysDown into tKeys
+   if Ig.ConsoleTyping() then put empty into tKeys    -- typing in the console: the keys are the line's
    local tStep
    put 8 * 30 / max(15, sLayout["fps"]) into tStep
    if 119 is among the items of tKeys or 65362 is among the items of tKeys then add tStep to sCamZ
@@ -2476,4 +2630,5 @@ end Collision.Hit
 
 -- the arrows move you; a focused menu or field must never get them
 on arrowKey pKey
+   if the short name of the target is "Ig3dConsoleIn" then pass arrowKey   -- left/right in the console's line
 end arrowKey
