@@ -40,6 +40,9 @@ on Game.OnStart
       exit Game.OnStart
    end if
    start using stack tLib
+   -- the Lean style: a map saved lean draws lean (optional, the level draws without it)
+   put E09.FindFile("LIB_BIT/livecode/lib_lean.livecodescript") into tLib
+   if tLib is not empty then start using stack tLib
    put CellMap.Read(E09.FindFile("LIB_EDITOR/maps/cards_yard.cellmap")) into sMap
    CellMap.Upgrade sMap
    put CellMap.TagsFromText(CellMap.ReadText(E09.FindFile("LIB_BIT/editor/data/tags_default.txt"))) into sTags
@@ -101,7 +104,7 @@ end E09.Prop
 on E09.Build
    local tSeg, tE, tMesh, tClass, tPair, tA, tB, tCell
    Scene.ClearAll
-   repeat for each line tSeg in CellMap.LevelSegments(sMap, sTags, empty)
+   repeat for each line tSeg in E09.LevelSegments(sMap)
       put item 7 of tSeg into tClass
       if tClass is "water" then next repeat
       if tMesh[tClass] is not an array then put Mesh.New() into tMesh[tClass]
@@ -232,6 +235,15 @@ end E09.TestClock
 function E09.State
    return E09.Cell() & "|x " & round(sHero["x"]) & "|y " & round(sHero["y"] / CellMap.HU(sMap)) & "|tide " & sTide["level"] & "|depth " & E09.Depth() & "|speed " & E09.Speed() & "|cells " & the number of lines of sWater["cells"] & "|" & sError
 end E09.State
+
+-- the level's lines: the outline only when the map was saved lean (BitEditor: Scene > Lean Style)
+-- and lib_lean is there (LIB_BIT/livecode/lib_lean; meta lean "water=off" leaves the water marks out)
+function E09.LevelSegments pMap
+   if pMap["meta"]["style"] is "lean" and "lib_lean" is among the lines of the stacksInUse then
+      return Lean.MapSegments(pMap, sTags, empty, Lean.Style(pMap["meta"]["lean"]))
+   end if
+   return CellMap.LevelSegments(pMap, sTags, empty)
+end E09.LevelSegments
 
 function E09.FindFile pRelPath
    local tPath, tTry
