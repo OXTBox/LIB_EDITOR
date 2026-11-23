@@ -10,7 +10,8 @@
 ##           R: glyph relief on / off   M: next map (wizard_pool, amazing_couple, two_rooms)
 ##           E: take the door or ladder you stand on (a map pack's doors)
 ##           L: lean style on / off (only the outline you can see; a map saved lean starts lean;
-##           LIB_BIT/livecode/lib_lean.livecodescript, 21 Nov 2026)
+##           LIB_BIT/livecode/lib_lean.livecodescript, 21 Nov 2026; meta "lean" water=off leaves the
+##           water's diagonal marks out, 23 Nov)
 ## PACKS     two_rooms is a map pack (CELLMAP_V3.md): a cellar and a loft stacked in one
 ##           place, drawn by CellMap.PackSegments, walked by CellMap.PackWalk (stairs up
 ##           through a hole, a sloped ramp to the goal), a ladder by CellMap.PackDoors
@@ -263,7 +264,7 @@ on E13.BuildLevel
       end if
    else if sLean is true then
       -- lean: the outline only, roofs' and blocks' seams cut (LIB_BIT/livecode/lib_lean)
-      put Lean.MapSegments(sMap, sTags, tUseFont, empty) into tSegs
+      put Lean.MapSegments(sMap, sTags, tUseFont, Lean.Style(sMap["meta"]["lean"])) into tSegs   -- meta lean: "water=off"
    else
       put CellMap.LevelSegments(sMap, sTags, tUseFont) into tSegs
    end if
