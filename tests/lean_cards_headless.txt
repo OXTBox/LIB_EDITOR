@@ -1,0 +1,55 @@
+-- Lean style in the six cards (E05 E06 E08 E09 E11 E12): a map saved lean draws lean (the outline
+-- only, as E13), a plain map draws every cube line as before. Run under the lock:
+--   cd ~/projects/OXT-BEYOND/tests && flock /tmp/oxt_headless.lock python3 -I oxt_headless.py ~/projects/LIB_EDITOR/tests/lean_cards_headless.txt
+local tCard, tPre, tMap, tTags, tPlain, tLean, tWant, tCount
+put "E05_Slopes,E06_RisingDoor,E08_Teleporters,E09_Tide,E11_CameraSquares,E12_Checker" into tCard
+repeat for each item tFile in tCard
+  put char 1 to 3 of tFile into tPre
+  put ck(tPre & " compiles", cardOpen(tFile & ".livecodescript"), empty) & return after tLog
+  set the defaultStack to "EditorExample"
+  get cardStart(tPre)
+  put ck(tPre & " lib_lean in use", "lib_lean" is among the lines of the stacksInUse, true) & return after tLog
+  put CellMap.Read("/home/igame3d/projects/LIB_EDITOR/maps/cards_yard.cellmap") into tMap
+  CellMap.Upgrade tMap
+  put CellMap.TagsFromText(CellMap.ReadText("/home/igame3d/projects/LIB_BIT/editor/data/tags_default.txt")) into tTags
+  put the number of lines of cardFn(tPre & ".LevelSegments", tMap) into tPlain
+  put ck(tPre & " plain map = CellMap.LevelSegments", tPlain, the number of lines of CellMap.LevelSegments(tMap, tTags, empty)) & return after tLog
+  put "lean" into tMap["meta"]["style"]
+  put cardFn(tPre & ".LevelSegments", tMap) into tLean
+  put Lean.MapSegments(tMap, tTags, empty, Lean.Style(empty)) into tWant
+  put ck(tPre & " lean map = Lean.MapSegments", tLean is tWant, true) & return after tLog
+  put ck(tPre & " lean draws fewer lines", the number of lines of tLean < tPlain and the number of lines of tLean > 0, true) & return after tLog
+  put "INFO " & tPre & " lines plain / lean: " & tPlain & " / " & the number of lines of tLean & return after tLog
+  put "water=off" into tMap["meta"]["lean"]
+  put ck(tPre & " meta lean water=off is passed on", cardFn(tPre & ".LevelSegments", tMap) is Lean.MapSegments(tMap, tTags, empty, Lean.Style("water=off")), true) & return after tLog
+  delete stack "EditorExample"
+end repeat
+return tLog
+--HANDLERS--
+-- the card on a stack with the engine stand-ins (LIB_GAMES/tools/engine_stubs); the compile result
+function cardOpen pFile
+  local tStub
+  put textDecode(url ("binfile:/home/igame3d/projects/LIB_GAMES/tools/engine_stubs.livecodescript"), "UTF-8") into tStub
+  delete line 1 of tStub
+  if there is a stack "EditorExample" then delete stack "EditorExample"
+  create stack "EditorExample"
+  set the script of stack "EditorExample" to tStub
+  set the fileName of stack "EditorExample" to "/home/igame3d/projects/LIB_EDITOR/examples/x.livecode"
+  set the script of card 1 of stack "EditorExample" to textDecode(url ("binfile:/home/igame3d/projects/LIB_EDITOR/examples/" & pFile), "UTF-8")
+  return the result
+end cardOpen
+
+-- Game.OnStart with no keys down, then the card's State
+function cardStart pPre
+  local tS
+  put the long id of card 1 of stack "EditorExample" into tS
+  dispatch (pPre & ".TestKeys") to tS with "0"
+  dispatch "Game.OnStart" to tS
+  dispatch function (pPre & ".State") to tS
+  return the result
+end cardStart
+
+function cardFn pFn, pA, pB, pC
+  dispatch function pFn to card 1 of stack "EditorExample" with pA, pB, pC
+  return the result
+end cardFn

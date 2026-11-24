@@ -35,6 +35,9 @@ on Game.OnStart
       exit Game.OnStart
    end if
    start using stack tLib
+   -- the Lean style: a map saved lean draws lean (optional, the level draws without it)
+   put E12.FindFile("LIB_BIT/livecode/lib_lean.livecodescript") into tLib
+   if tLib is not empty then start using stack tLib
    put CellMap.TagsFromText(CellMap.ReadText(E12.FindFile("LIB_BIT/editor/data/tags_default.txt"))) into sTags
    E12.Open 1
    HUD.Set "E12.Help", "N OR SPACE: NEXT PROBLEM   B: BACK   M: NEXT MAP", 20, 146, 11
@@ -129,7 +132,7 @@ end E12.Line
 on E12.Build
    local tSeg, tE, tMesh, tClass, tPair, tA, tB
    Scene.ClearAll
-   repeat for each line tSeg in CellMap.LevelSegments(sMap, sTags, empty)
+   repeat for each line tSeg in E12.LevelSegments(sMap)
       put item 7 of tSeg into tClass
       if tMesh[tClass] is not an array then put Mesh.New() into tMesh[tClass]
       put CellMap.SegToEngine(sMap, tSeg) into tE
@@ -221,6 +224,15 @@ end E12.State
 function E12.List
    return sProblems
 end E12.List
+
+-- the level's lines: the outline only when the map was saved lean (BitEditor: Scene > Lean Style)
+-- and lib_lean is there (LIB_BIT/livecode/lib_lean; meta lean "water=off" leaves the water marks out)
+function E12.LevelSegments pMap
+   if pMap["meta"]["style"] is "lean" and "lib_lean" is among the lines of the stacksInUse then
+      return Lean.MapSegments(pMap, sTags, empty, Lean.Style(pMap["meta"]["lean"]))
+   end if
+   return CellMap.LevelSegments(pMap, sTags, empty)
+end E12.LevelSegments
 
 function E12.FindFile pRelPath
    local tPath, tTry
